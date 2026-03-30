@@ -22,15 +22,7 @@ func (c *Client) ListGates(ctx context.Context, limit, page int, tags []string) 
 }
 
 func (c *Client) GetGate(ctx context.Context, id string) (*Gate, error) {
-	raw, err := c.getEntity(ctx, fmt.Sprintf("%s/%s", gatesPath, id))
-	if err != nil {
-		return nil, err
-	}
-	var gate Gate
-	if err := json.Unmarshal(raw, &gate); err != nil {
-		return nil, err
-	}
-	return &gate, nil
+	return getAndDecode[Gate](c, ctx, fmt.Sprintf("%s/%s", gatesPath, id))
 }
 
 func (c *Client) CreateGate(ctx context.Context, name, description string) (*Gate, error) {
@@ -38,19 +30,7 @@ func (c *Client) CreateGate(ctx context.Context, name, description string) (*Gat
 	if description != "" {
 		body["description"] = description
 	}
-	raw, err := c.do(ctx, http.MethodPost, gatesPath, body)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, err
-	}
-	var gate Gate
-	if err := json.Unmarshal(resp.Data, &gate); err != nil {
-		return nil, err
-	}
-	return &gate, nil
+	return doAndDecode[Gate](c, ctx, http.MethodPost, gatesPath, body)
 }
 
 func (c *Client) DeleteGate(ctx context.Context, id string) error {
@@ -79,7 +59,11 @@ func (c *Client) LaunchGate(ctx context.Context, id string) error {
 }
 
 func (c *Client) UpdateGate(ctx context.Context, id string, update map[string]any) (*Gate, error) {
-	raw, err := c.do(ctx, http.MethodPatch, fmt.Sprintf("%s/%s", gatesPath, id), update)
+	return doAndDecode[Gate](c, ctx, http.MethodPatch, fmt.Sprintf("%s/%s", gatesPath, id), update)
+}
+
+func (c *Client) GetGateRules(ctx context.Context, id string) ([]Rule, error) {
+	raw, err := c.do(ctx, http.MethodGet, fmt.Sprintf("%s/%s/rules", gatesPath, id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -87,39 +71,15 @@ func (c *Client) UpdateGate(ctx context.Context, id string, update map[string]an
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		return nil, err
 	}
-	var gate Gate
-	if err := json.Unmarshal(resp.Data, &gate); err != nil {
-		return nil, err
-	}
-	return &gate, nil
-}
-
-func (c *Client) GetGateRules(ctx context.Context, id string) ([]Rule, error) {
-	raw, err := c.getEntity(ctx, fmt.Sprintf("%s/%s/rules", gatesPath, id))
-	if err != nil {
-		return nil, err
-	}
 	var rules []Rule
-	if err := json.Unmarshal(raw, &rules); err != nil {
+	if err := json.Unmarshal(resp.Data, &rules); err != nil {
 		return nil, err
 	}
 	return rules, nil
 }
 
 func (c *Client) AddGateRule(ctx context.Context, id string, rule Rule) (*Rule, error) {
-	raw, err := c.do(ctx, http.MethodPost, fmt.Sprintf("%s/%s/rule", gatesPath, id), rule)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, err
-	}
-	var created Rule
-	if err := json.Unmarshal(resp.Data, &created); err != nil {
-		return nil, err
-	}
-	return &created, nil
+	return doAndDecode[Rule](c, ctx, http.MethodPost, fmt.Sprintf("%s/%s/rule", gatesPath, id), rule)
 }
 
 func (c *Client) UpdateGateRule(ctx context.Context, gateID, ruleID string, update map[string]any) error {

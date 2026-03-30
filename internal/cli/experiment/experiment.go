@@ -54,14 +54,12 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				}
 
 				if search != "" {
-					experiments = filterExperiments(experiments, search)
+					experiments = shared.FilterBySearch(experiments, search,
+						func(e api.Experiment) string { return e.Name },
+						func(e api.Experiment) string { return e.Description })
 				}
 
-				items := make([]any, len(experiments))
-				for i, e := range experiments {
-					items[i] = e
-				}
-				shared.WritePaginatedList(items, pagination, g.Format)
+				shared.WritePaginatedList(shared.ToAnySlice(experiments), pagination, g.Format)
 				return nil
 			})
 		},
@@ -71,17 +69,6 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd.Flags().StringVar(&tag, "tag", "", "Filter by tag (comma-separated)")
 	cmd.Flags().StringVar(&search, "search", "", "Filter by name (client-side substring match)")
 	parent.AddCommand(cmd)
-}
-
-func filterExperiments(experiments []api.Experiment, search string) []api.Experiment {
-	search = strings.ToLower(search)
-	var filtered []api.Experiment
-	for _, e := range experiments {
-		if strings.Contains(strings.ToLower(e.Name), search) || strings.Contains(strings.ToLower(e.Description), search) {
-			filtered = append(filtered, e)
-		}
-	}
-	return filtered
 }
 
 func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -181,9 +168,9 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				var update map[string]any
-				if err := json.Unmarshal([]byte(args[1]), &update); err != nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "invalid JSON: %s", err)
+				update, err := shared.ParseJSONArg(args[1])
+				if err != nil {
+					return err
 				}
 				exp, err := client.UpdateExperiment(ctx, args[0], update)
 				if err != nil {
@@ -288,4 +275,3 @@ func registerShip(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd.Flags().BoolVar(&removeTargeting, "remove-targeting", false, "Remove targeting after shipping")
 	parent.AddCommand(cmd)
 }
-

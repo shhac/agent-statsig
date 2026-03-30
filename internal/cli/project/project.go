@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/shhac/agent-statsig/internal/api"
+	"github.com/shhac/agent-statsig/internal/cli/shared"
 	"github.com/shhac/agent-statsig/internal/config"
 	"github.com/shhac/agent-statsig/internal/credential"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
@@ -213,7 +215,7 @@ func registerTest(parent *cobra.Command) {
 				alias = args[0]
 			}
 
-			resolved, err := resolveAlias(alias)
+			resolved, err := shared.ResolveProject(alias)
 			if err != nil {
 				output.WriteError(os.Stderr, err)
 				return nil
@@ -226,7 +228,7 @@ func registerTest(parent *cobra.Command) {
 			}
 
 			client := api.NewClient(cred.ConsoleKey, cred.ClientKey)
-			ctx, cancel := context.WithTimeout(context.Background(), 10_000_000_000)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
 			_, _, err = client.ListGates(ctx, 1, 1, nil)
@@ -252,17 +254,3 @@ func registerTest(parent *cobra.Command) {
 	parent.AddCommand(cmd)
 }
 
-func resolveAlias(alias string) (string, error) {
-	if alias != "" {
-		return alias, nil
-	}
-	if env := os.Getenv("AGENT_STATSIG_PROJECT"); env != "" {
-		return env, nil
-	}
-	cfg := config.Read()
-	if cfg.DefaultProject != "" {
-		return cfg.DefaultProject, nil
-	}
-	return "", agenterrors.New("no project specified", agenterrors.FixableByAgent).
-		WithHint("Specify a project alias or set a default with 'project set-default'")
-}

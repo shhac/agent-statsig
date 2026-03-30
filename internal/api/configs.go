@@ -22,15 +22,7 @@ func (c *Client) ListConfigs(ctx context.Context, limit, page int, tags []string
 }
 
 func (c *Client) GetConfig(ctx context.Context, id string) (*DynamicConfig, error) {
-	raw, err := c.getEntity(ctx, fmt.Sprintf("%s/%s", configsPath, id))
-	if err != nil {
-		return nil, err
-	}
-	var cfg DynamicConfig
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
+	return getAndDecode[DynamicConfig](c, ctx, fmt.Sprintf("%s/%s", configsPath, id))
 }
 
 func (c *Client) CreateConfig(ctx context.Context, name, description string) (*DynamicConfig, error) {
@@ -38,19 +30,7 @@ func (c *Client) CreateConfig(ctx context.Context, name, description string) (*D
 	if description != "" {
 		body["description"] = description
 	}
-	raw, err := c.do(ctx, http.MethodPost, configsPath, body)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, err
-	}
-	var cfg DynamicConfig
-	if err := json.Unmarshal(resp.Data, &cfg); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
+	return doAndDecode[DynamicConfig](c, ctx, http.MethodPost, configsPath, body)
 }
 
 func (c *Client) DeleteConfig(ctx context.Context, id string) error {
@@ -74,7 +54,11 @@ func (c *Client) ArchiveConfig(ctx context.Context, id string) error {
 }
 
 func (c *Client) UpdateConfig(ctx context.Context, id string, update map[string]any) (*DynamicConfig, error) {
-	raw, err := c.do(ctx, http.MethodPatch, fmt.Sprintf("%s/%s", configsPath, id), update)
+	return doAndDecode[DynamicConfig](c, ctx, http.MethodPatch, fmt.Sprintf("%s/%s", configsPath, id), update)
+}
+
+func (c *Client) GetConfigRules(ctx context.Context, id string) ([]Rule, error) {
+	raw, err := c.do(ctx, http.MethodGet, fmt.Sprintf("%s/%s/rules", configsPath, id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -82,20 +66,8 @@ func (c *Client) UpdateConfig(ctx context.Context, id string, update map[string]
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		return nil, err
 	}
-	var cfg DynamicConfig
-	if err := json.Unmarshal(resp.Data, &cfg); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
-}
-
-func (c *Client) GetConfigRules(ctx context.Context, id string) ([]Rule, error) {
-	raw, err := c.getEntity(ctx, fmt.Sprintf("%s/%s/rules", configsPath, id))
-	if err != nil {
-		return nil, err
-	}
 	var rules []Rule
-	if err := json.Unmarshal(raw, &rules); err != nil {
+	if err := json.Unmarshal(resp.Data, &rules); err != nil {
 		return nil, err
 	}
 	return rules, nil

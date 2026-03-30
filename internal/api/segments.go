@@ -22,15 +22,7 @@ func (c *Client) ListSegments(ctx context.Context, limit, page int, tags []strin
 }
 
 func (c *Client) GetSegment(ctx context.Context, id string) (*Segment, error) {
-	raw, err := c.getEntity(ctx, fmt.Sprintf("%s/%s", segmentsPath, id))
-	if err != nil {
-		return nil, err
-	}
-	var seg Segment
-	if err := json.Unmarshal(raw, &seg); err != nil {
-		return nil, err
-	}
-	return &seg, nil
+	return getAndDecode[Segment](c, ctx, fmt.Sprintf("%s/%s", segmentsPath, id))
 }
 
 func (c *Client) CreateSegment(ctx context.Context, name, description, segType string) (*Segment, error) {
@@ -41,19 +33,7 @@ func (c *Client) CreateSegment(ctx context.Context, name, description, segType s
 	if segType != "" {
 		body["type"] = segType
 	}
-	raw, err := c.do(ctx, http.MethodPost, segmentsPath, body)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, err
-	}
-	var seg Segment
-	if err := json.Unmarshal(resp.Data, &seg); err != nil {
-		return nil, err
-	}
-	return &seg, nil
+	return doAndDecode[Segment](c, ctx, http.MethodPost, segmentsPath, body)
 }
 
 func (c *Client) DeleteSegment(ctx context.Context, id string) error {
@@ -85,5 +65,13 @@ func (c *Client) RemoveSegmentIDs(ctx context.Context, id string, ids []string) 
 }
 
 func (c *Client) GetSegmentIDs(ctx context.Context, id string) (json.RawMessage, error) {
-	return c.getEntity(ctx, fmt.Sprintf("%s/%s/ids", segmentsPath, id))
+	raw, err := c.do(ctx, http.MethodGet, fmt.Sprintf("%s/%s/ids", segmentsPath, id), nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp entityResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
 }

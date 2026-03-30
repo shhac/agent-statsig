@@ -2,14 +2,12 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
-	agenterrors "github.com/shhac/agent-statsig/internal/errors"
 	"github.com/shhac/agent-statsig/internal/output"
 )
 
@@ -53,14 +51,12 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				}
 
 				if search != "" {
-					configs = filterConfigs(configs, search)
+					configs = shared.FilterBySearch(configs, search,
+						func(c api.DynamicConfig) string { return c.Name },
+						func(c api.DynamicConfig) string { return c.Description })
 				}
 
-				items := make([]any, len(configs))
-				for i, c := range configs {
-					items[i] = c
-				}
-				shared.WritePaginatedList(items, pagination, g.Format)
+				shared.WritePaginatedList(shared.ToAnySlice(configs), pagination, g.Format)
 				return nil
 			})
 		},
@@ -70,17 +66,6 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd.Flags().StringVar(&tag, "tag", "", "Filter by tag (comma-separated)")
 	cmd.Flags().StringVar(&search, "search", "", "Filter by name (client-side substring match)")
 	parent.AddCommand(cmd)
-}
-
-func filterConfigs(configs []api.DynamicConfig, search string) []api.DynamicConfig {
-	search = strings.ToLower(search)
-	var filtered []api.DynamicConfig
-	for _, c := range configs {
-		if strings.Contains(strings.ToLower(c.Name), search) || strings.Contains(strings.ToLower(c.Description), search) {
-			filtered = append(filtered, c)
-		}
-	}
-	return filtered
 }
 
 func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -210,10 +195,9 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				var update map[string]any
-				if err := json.Unmarshal([]byte(args[1]), &update); err != nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "invalid JSON: %s", err).
-						WithHint("Provide a valid JSON object")
+				update, err := shared.ParseJSONArg(args[1])
+				if err != nil {
+					return err
 				}
 				cfg, err := client.UpdateConfig(ctx, args[0], update)
 				if err != nil {

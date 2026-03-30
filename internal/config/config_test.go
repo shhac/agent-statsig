@@ -103,6 +103,18 @@ func TestSetDefault(t *testing.T) {
 	}
 }
 
+func TestSetDefaultNonexistent(t *testing.T) {
+	setupTestDir(t)
+	StoreProject("a", Project{})
+
+	SetDefault("nonexistent")
+	ClearCache()
+	cfg := Read()
+	if cfg.DefaultProject != "a" {
+		t.Errorf("default should remain 'a' when setting nonexistent, got %q", cfg.DefaultProject)
+	}
+}
+
 func TestConfigDir(t *testing.T) {
 	SetConfigDir("")
 	defer SetConfigDir("")

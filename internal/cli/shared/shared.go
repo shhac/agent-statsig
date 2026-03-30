@@ -2,6 +2,7 @@ package shared
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -88,6 +89,116 @@ func WithClient(projectAlias string, timeout int, fn func(ctx context.Context, c
 		output.WriteError(os.Stderr, err)
 	}
 	return nil
+}
+
+// ToAnySlice converts a typed slice to []any.
+func ToAnySlice[T any](s []T) []any {
+	result := make([]any, len(s))
+	for i, v := range s {
+		result[i] = v
+	}
+	return result
+}
+
+// FilterBySearch filters a slice by substring match on name/description fields.
+func FilterBySearch[T any](items []T, search string, getName func(T) string, getDesc func(T) string) []T {
+	search = strings.ToLower(search)
+	var filtered []T
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(getName(item)), search) ||
+			strings.Contains(strings.ToLower(getDesc(item)), search) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+// ParseJSONArg parses a JSON string argument into a map, returning a classified error on failure.
+func ParseJSONArg(raw string) (map[string]any, error) {
+	var result map[string]any
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "invalid JSON: %s", err).
+			WithHint("Provide a valid JSON object")
+	}
+	return result, nil
+}
+
+// ValidateCriteria checks that a criteria type and operator are valid Statsig condition values.
+func ValidateCriteria(criteria, operator string) error {
+	found := false
+	for _, ct := range api.ConditionTypes {
+		if ct == criteria {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return agenterrors.Newf(agenterrors.FixableByAgent, "unknown criteria %q", criteria).
+			WithHint("Use 'gate criteria' to list available criteria types")
+	}
+
+	if operator == "" {
+		return nil
+	}
+
+	ops, ok := api.OperatorsByType[criteria]
+	if !ok || len(ops) == 0 {
+		return nil
+	}
+
+	for _, op := range ops {
+		if op == operator {
+			return nil
+		}
+	}
+	return agenterrors.Newf(agenterrors.FixableByAgent, "invalid operator %q for criteria %q", operator, criteria).
+		WithHint("Valid operators: " + strings.Join(ops, ", "))
+}
+
+// Slice helpers
+
+func SliceContains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func SliceRemove(slice []string, item string) []string {
+	result := make([]string, 0, len(slice))
+	for _, s := range slice {
+		if s != item {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+func ToStringSlice(v any) []string {
+	switch val := v.(type) {
+	case []string:
+		return val
+	case []any:
+		result := make([]string, len(val))
+		for i, item := range val {
+			if s, ok := item.(string); ok {
+				result[i] = s
+			}
+		}
+		return result
+	default:
+		return nil
+	}
+}
+
+func MapKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func WritePaginatedList(items []any, pagination *api.PaginationInfo, format string) {

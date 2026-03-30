@@ -59,14 +59,12 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				}
 
 				if search != "" {
-					gates = filterGates(gates, search)
+					gates = shared.FilterBySearch(gates, search,
+						func(g api.Gate) string { return g.Name },
+						func(g api.Gate) string { return g.Description })
 				}
 
-				items := make([]any, len(gates))
-				for i, g := range gates {
-					items[i] = g
-				}
-				shared.WritePaginatedList(items, pagination, g.Format)
+				shared.WritePaginatedList(shared.ToAnySlice(gates), pagination, g.Format)
 				return nil
 			})
 		},
@@ -76,17 +74,6 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd.Flags().StringVar(&tag, "tag", "", "Filter by tag (comma-separated)")
 	cmd.Flags().StringVar(&search, "search", "", "Filter by name (client-side substring match)")
 	parent.AddCommand(cmd)
-}
-
-func filterGates(gates []api.Gate, search string) []api.Gate {
-	search = strings.ToLower(search)
-	var filtered []api.Gate
-	for _, g := range gates {
-		if strings.Contains(strings.ToLower(g.Name), search) || strings.Contains(strings.ToLower(g.Description), search) {
-			filtered = append(filtered, g)
-		}
-	}
-	return filtered
 }
 
 func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -235,10 +222,9 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				var update map[string]any
-				if err := json.Unmarshal([]byte(args[1]), &update); err != nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "invalid JSON: %s", err).
-						WithHint("Provide a valid JSON object, e.g. '{\"description\": \"new desc\"}'")
+				update, err := shared.ParseJSONArg(args[1])
+				if err != nil {
+					return err
 				}
 				gate, err := client.UpdateGate(ctx, args[0], update)
 				if err != nil {
@@ -249,76 +235,6 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 			})
 		},
 	}
-	parent.AddCommand(cmd)
-}
-
-func registerRollout(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	var percent float64
-	var environments string
-
-	cmd := &cobra.Command{
-		Use:   "rollout <name>",
-		Short: "Set rollout percentage (Everyone rule)",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				gate, err := client.GetGate(ctx, args[0])
-				if err != nil {
-					return err
-				}
-
-				var envs []string
-				if environments != "" {
-					envs = strings.Split(environments, ",")
-				}
-
-				var publicRuleIdx = -1
-				for i, r := range gate.Rules {
-					for _, c := range r.Conditions {
-						if c.Type == "public" {
-							publicRuleIdx = i
-							break
-						}
-					}
-					if publicRuleIdx >= 0 {
-						break
-					}
-				}
-
-				if publicRuleIdx >= 0 {
-					ruleID := gate.Rules[publicRuleIdx].ID
-					update := map[string]any{"passPercentage": percent}
-					if len(envs) > 0 {
-						update["environments"] = envs
-					}
-					if err := client.UpdateGateRule(ctx, args[0], ruleID, update); err != nil {
-						return err
-					}
-				} else {
-					rule := api.Rule{
-						Name:           "Everyone",
-						PassPercentage: percent,
-						Conditions:     []api.Condition{{Type: "public"}},
-						Environments:   envs,
-					}
-					if _, err := client.AddGateRule(ctx, args[0], rule); err != nil {
-						return err
-					}
-				}
-
-				output.PrintJSON(map[string]any{
-					"status":         "ok",
-					"gate":           args[0],
-					"rolloutPercent": percent,
-				}, true)
-				return nil
-			})
-		},
-	}
-	cmd.Flags().Float64Var(&percent, "percent", 0, "Rollout percentage (0-100)")
-	cmd.MarkFlagRequired("percent")
-	cmd.Flags().StringVar(&environments, "environments", "", "Comma-separated environments")
 	parent.AddCommand(cmd)
 }
 
@@ -352,24 +268,5 @@ func registerCheck(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	}
 	cmd.Flags().StringVar(&user, "user", "", "User JSON object")
 	cmd.MarkFlagRequired("user")
-	parent.AddCommand(cmd)
-}
-
-func registerCriteria(parent *cobra.Command) {
-	cmd := &cobra.Command{
-		Use:   "criteria",
-		Short: "List available condition criteria and operators",
-		Run: func(cmd *cobra.Command, args []string) {
-			criteria := make([]map[string]any, 0, len(api.ConditionTypes))
-			for _, ct := range api.ConditionTypes {
-				entry := map[string]any{"type": ct}
-				if ops, ok := api.OperatorsByType[ct]; ok && len(ops) > 0 {
-					entry["operators"] = ops
-				}
-				criteria = append(criteria, entry)
-			}
-			output.PrintJSON(map[string]any{"criteria": criteria}, true)
-		},
-	}
 	parent.AddCommand(cmd)
 }

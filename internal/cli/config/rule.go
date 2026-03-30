@@ -66,6 +66,10 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+				if err := shared.ValidateCriteria(criteria, operator); err != nil {
+					return err
+				}
+
 				condition := api.Condition{
 					Type:     criteria,
 					Operator: operator,
@@ -87,8 +91,8 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 					rule.Environments = strings.Split(environments, ",")
 				}
 
+				var rv any
 				if returnValue != "" {
-					var rv any
 					if err := json.Unmarshal([]byte(returnValue), &rv); err != nil {
 						return agenterrors.Newf(agenterrors.FixableByAgent, "invalid return-value JSON: %s", err)
 					}
@@ -100,10 +104,8 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 					return err
 				}
 
-				if returnValue != "" && configEntity.Schema != nil {
-					var rv any
-					json.Unmarshal([]byte(returnValue), &rv)
-					if err := validateAgainstSchema(configEntity.Schema, rv); err != nil {
+				if rv != nil && configEntity.Schema != nil {
+					if err := ValidateAgainstSchema(configEntity.Schema, rv); err != nil {
 						return err
 					}
 				}
@@ -203,7 +205,8 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 	parent.AddCommand(cmd)
 }
 
-func validateAgainstSchema(schema json.RawMessage, value any) error {
+// ValidateAgainstSchema checks a value against a JSON schema's properties and required fields.
+func ValidateAgainstSchema(schema json.RawMessage, value any) error {
 	var schemaObj map[string]any
 	if err := json.Unmarshal(schema, &schemaObj); err != nil {
 		return nil
@@ -230,25 +233,16 @@ func validateAgainstSchema(schema json.RawMessage, value any) error {
 	for key := range requiredSet {
 		if _, ok := valueMap[key]; !ok {
 			return agenterrors.Newf(agenterrors.FixableByAgent, "missing required field %q in return value", key).
-				WithHint("Schema requires: " + strings.Join(mapKeys(requiredSet), ", "))
+				WithHint("Schema requires: " + strings.Join(shared.MapKeys(requiredSet), ", "))
 		}
 	}
 
 	for key := range valueMap {
 		if _, ok := props[key]; !ok {
-			knownKeys := mapKeys(props)
 			return agenterrors.Newf(agenterrors.FixableByAgent, "unknown field %q in return value", key).
-				WithHint("Known fields: " + strings.Join(knownKeys, ", "))
+				WithHint("Known fields: " + strings.Join(shared.MapKeys(props), ", "))
 		}
 	}
 
 	return nil
-}
-
-func mapKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }

@@ -22,15 +22,7 @@ func (c *Client) ListExperiments(ctx context.Context, limit, page int, tags []st
 }
 
 func (c *Client) GetExperiment(ctx context.Context, id string) (*Experiment, error) {
-	raw, err := c.getEntity(ctx, fmt.Sprintf("%s/%s", experimentsPath, id))
-	if err != nil {
-		return nil, err
-	}
-	var exp Experiment
-	if err := json.Unmarshal(raw, &exp); err != nil {
-		return nil, err
-	}
-	return &exp, nil
+	return getAndDecode[Experiment](c, ctx, fmt.Sprintf("%s/%s", experimentsPath, id))
 }
 
 func (c *Client) CreateExperiment(ctx context.Context, name, description string, groups []Group) (*Experiment, error) {
@@ -41,19 +33,7 @@ func (c *Client) CreateExperiment(ctx context.Context, name, description string,
 	if len(groups) > 0 {
 		body["groups"] = groups
 	}
-	raw, err := c.do(ctx, http.MethodPost, experimentsPath, body)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, err
-	}
-	var exp Experiment
-	if err := json.Unmarshal(resp.Data, &exp); err != nil {
-		return nil, err
-	}
-	return &exp, nil
+	return doAndDecode[Experiment](c, ctx, http.MethodPost, experimentsPath, body)
 }
 
 func (c *Client) DeleteExperiment(ctx context.Context, id string) error {
@@ -67,19 +47,7 @@ func (c *Client) ArchiveExperiment(ctx context.Context, id string) error {
 }
 
 func (c *Client) UpdateExperiment(ctx context.Context, id string, update map[string]any) (*Experiment, error) {
-	raw, err := c.do(ctx, http.MethodPatch, fmt.Sprintf("%s/%s", experimentsPath, id), update)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, err
-	}
-	var exp Experiment
-	if err := json.Unmarshal(resp.Data, &exp); err != nil {
-		return nil, err
-	}
-	return &exp, nil
+	return doAndDecode[Experiment](c, ctx, http.MethodPatch, fmt.Sprintf("%s/%s", experimentsPath, id), update)
 }
 
 func (c *Client) StartExperiment(ctx context.Context, id string) error {
@@ -100,9 +68,9 @@ func (c *Client) AbandonExperiment(ctx context.Context, id string, reason string
 
 func (c *Client) ShipExperiment(ctx context.Context, id string, groupID, reason string, removeTargeting bool) error {
 	body := map[string]any{
-		"id":               groupID,
-		"decisionReason":   reason,
-		"removeTargeting":  removeTargeting,
+		"id":              groupID,
+		"decisionReason":  reason,
+		"removeTargeting": removeTargeting,
 	}
 	_, err := c.do(ctx, http.MethodPut, fmt.Sprintf("%s/%s/make_decision", experimentsPath, id), body)
 	return err

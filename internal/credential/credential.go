@@ -4,14 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 
 	"github.com/shhac/agent-statsig/internal/config"
 )
 
-const keychainService = "app.paulie.agent-statsig"
 const keychainSentinel = "__KEYCHAIN__"
 
 type Credential struct {
@@ -80,25 +77,11 @@ func Store(name string, cred Credential) (string, error) {
 		ClientKey:  cred.ClientKey,
 	}
 
-	if runtime.GOOS == "darwin" {
-		keychainData, _ := json.Marshal(map[string]string{
-			"console_key": cred.ConsoleKey,
-			"client_key":  cred.ClientKey,
-		})
-
-		// Delete existing entry if present (ignore errors).
-		exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
-
-		cmd := exec.Command("security", "add-generic-password",
-			"-s", keychainService, "-a", name, "-w", string(keychainData),
-			"-U",
-		)
-		if err := cmd.Run(); err == nil {
-			entry.ConsoleKey = keychainSentinel
-			entry.ClientKey = keychainSentinel
-			entry.KeychainManaged = true
-			storage = "keychain"
-		}
+	if err := keychainStore(name, cred.ConsoleKey, cred.ClientKey); err == nil {
+		entry.ConsoleKey = keychainSentinel
+		entry.ClientKey = keychainSentinel
+		entry.KeychainManaged = true
+		storage = "keychain"
 	}
 
 	index[name] = entry
@@ -124,16 +107,10 @@ func Get(name string) (*Credential, error) {
 		KeychainManaged: entry.KeychainManaged,
 	}
 
-	if entry.KeychainManaged && runtime.GOOS == "darwin" {
-		out, err := exec.Command("security", "find-generic-password",
-			"-s", keychainService, "-a", name, "-w",
-		).Output()
-		if err == nil {
-			var keys map[string]string
-			if err := json.Unmarshal(out, &keys); err == nil {
-				cred.ConsoleKey = keys["console_key"]
-				cred.ClientKey = keys["client_key"]
-			}
+	if entry.KeychainManaged {
+		if consoleKey, clientKey, err := keychainGet(name); err == nil {
+			cred.ConsoleKey = consoleKey
+			cred.ClientKey = clientKey
 		}
 	}
 
@@ -150,8 +127,8 @@ func Remove(name string) error {
 		return &NotFoundError{Name: name}
 	}
 
-	if entry.KeychainManaged && runtime.GOOS == "darwin" {
-		exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
+	if entry.KeychainManaged {
+		keychainDelete(name)
 	}
 
 	delete(index, name)

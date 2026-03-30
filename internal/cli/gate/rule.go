@@ -64,7 +64,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				if err := validateCriteria(criteria, operator); err != nil {
+				if err := shared.ValidateCriteria(criteria, operator); err != nil {
 					return err
 				}
 
@@ -138,50 +138,13 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 					return err
 				}
 
-				var targetRule *api.Rule
-				for _, r := range gate.Rules {
-					if r.ID == ruleID {
-						targetRule = &r
-						break
-					}
-				}
+				targetRule := FindRuleByID(gate.Rules, ruleID)
 				if targetRule == nil {
 					return agenterrors.Newf(agenterrors.FixableByAgent, "rule %q not found", ruleID).
 						WithHint("Use 'gate rule list " + args[0] + "' to see rule IDs")
 				}
 
-				update := make(map[string]any)
-				if setPercent {
-					update["passPercentage"] = passPercent
-				}
-
-				if addValues != "" || removeValues != "" {
-					if len(targetRule.Conditions) == 0 {
-						return agenterrors.New("rule has no conditions to modify values on", agenterrors.FixableByAgent)
-					}
-
-					existing := targetRule.Conditions[0]
-					existingVals := toStringSlice(existing.TargetValue)
-
-					if addValues != "" {
-						for _, v := range strings.Split(addValues, ",") {
-							if !contains(existingVals, v) {
-								existingVals = append(existingVals, v)
-							}
-						}
-					}
-					if removeValues != "" {
-						for _, v := range strings.Split(removeValues, ",") {
-							existingVals = removeFromSlice(existingVals, v)
-						}
-					}
-
-					conditions := make([]api.Condition, len(targetRule.Conditions))
-					copy(conditions, targetRule.Conditions)
-					conditions[0].TargetValue = existingVals
-					update["conditions"] = conditions
-				}
-
+				update := BuildRuleUpdate(targetRule, addValues, removeValues, passPercent, setPercent)
 				if len(update) == 0 {
 					return agenterrors.New("no updates specified", agenterrors.FixableByAgent).
 						WithHint("Use --add-values, --remove-values, or --pass-percent")
@@ -227,69 +190,54 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 	parent.AddCommand(cmd)
 }
 
-func validateCriteria(criteria, operator string) error {
-	found := false
-	for _, ct := range api.ConditionTypes {
-		if ct == criteria {
-			found = true
-			break
+// FindRuleByID returns the rule with the given ID, or nil.
+func FindRuleByID(rules []api.Rule, id string) *api.Rule {
+	for i := range rules {
+		if rules[i].ID == id {
+			return &rules[i]
 		}
 	}
-	if !found {
-		return agenterrors.Newf(agenterrors.FixableByAgent, "unknown criteria %q", criteria).
-			WithHint("Use 'gate criteria' to list available criteria types")
-	}
-
-	if operator == "" {
-		return nil
-	}
-
-	ops, ok := api.OperatorsByType[criteria]
-	if !ok || len(ops) == 0 {
-		return nil
-	}
-
-	for _, op := range ops {
-		if op == operator {
-			return nil
-		}
-	}
-	return agenterrors.Newf(agenterrors.FixableByAgent, "invalid operator %q for criteria %q", operator, criteria).
-		WithHint("Valid operators: " + strings.Join(ops, ", "))
+	return nil
 }
 
-func toStringSlice(v any) []string {
-	switch val := v.(type) {
-	case []string:
-		return val
-	case []any:
-		result := make([]string, len(val))
-		for i, item := range val {
-			if s, ok := item.(string); ok {
-				result[i] = s
+// BuildRuleUpdate constructs an update map for a rule, merging value changes.
+func BuildRuleUpdate(rule *api.Rule, addValues, removeValues string, passPercent float64, setPercent bool) map[string]any {
+	update := make(map[string]any)
+	if setPercent {
+		update["passPercentage"] = passPercent
+	}
+
+	if addValues == "" && removeValues == "" {
+		return update
+	}
+
+	if len(rule.Conditions) == 0 {
+		return update
+	}
+
+	existing := shared.ToStringSlice(rule.Conditions[0].TargetValue)
+	existing = MergeConditionValues(existing, addValues, removeValues)
+
+	conditions := make([]api.Condition, len(rule.Conditions))
+	copy(conditions, rule.Conditions)
+	conditions[0].TargetValue = existing
+	update["conditions"] = conditions
+	return update
+}
+
+// MergeConditionValues adds and removes values from an existing slice.
+func MergeConditionValues(existing []string, add, remove string) []string {
+	if add != "" {
+		for _, v := range strings.Split(add, ",") {
+			if !shared.SliceContains(existing, v) {
+				existing = append(existing, v)
 			}
 		}
-		return result
-	default:
-		return nil
 	}
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
+	if remove != "" {
+		for _, v := range strings.Split(remove, ",") {
+			existing = shared.SliceRemove(existing, v)
 		}
 	}
-	return false
-}
-
-func removeFromSlice(slice []string, item string) []string {
-	result := make([]string, 0, len(slice))
-	for _, s := range slice {
-		if s != item {
-			result = append(result, s)
-		}
-	}
-	return result
+	return existing
 }

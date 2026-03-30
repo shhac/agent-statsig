@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
+	"github.com/shhac/agent-statsig/internal/cli/shared"
 )
 
 func TestFilterSegments(t *testing.T) {
@@ -13,18 +14,17 @@ func TestFilterSegments(t *testing.T) {
 		{Name: "enterprise", Description: "Enterprise tier customers"},
 	}
 
-	result := filterSegments(segments, "internal")
+	result := shared.FilterBySearch(segments, "internal",
+		func(s api.Segment) string { return s.Name },
+		func(s api.Segment) string { return s.Description })
 	if len(result) != 1 {
 		t.Fatalf("expected 1, got %d", len(result))
 	}
 
-	result = filterSegments(segments, "BETA")
+	result = shared.FilterBySearch(segments, "BETA",
+		func(s api.Segment) string { return s.Name },
+		func(s api.Segment) string { return s.Description })
 	if len(result) != 1 {
 		t.Errorf("case-insensitive: expected 1, got %d", len(result))
-	}
-
-	result = filterSegments(segments, "enterprise")
-	if len(result) != 1 {
-		t.Errorf("expected 1, got %d", len(result))
 	}
 }

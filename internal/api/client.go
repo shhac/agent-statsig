@@ -7,17 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"net/url"
 
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
 )
 
 const (
-	BaseURL    = "https://statsigapi.net"
-	APIVersion = "20240601"
+	DefaultBaseURL = "https://statsigapi.net"
+	APIVersion     = "20240601"
 )
 
 type Client struct {
+	baseURL    string
 	consoleKey string
 	clientKey  string
 	http       *http.Client
@@ -25,6 +26,17 @@ type Client struct {
 
 func NewClient(consoleKey, clientKey string) *Client {
 	return &Client{
+		baseURL:    DefaultBaseURL,
+		consoleKey: consoleKey,
+		clientKey:  clientKey,
+		http:       &http.Client{},
+	}
+}
+
+// NewTestClient creates a client pointing at a custom base URL (for tests).
+func NewTestClient(baseURL, consoleKey, clientKey string) *Client {
+	return &Client{
+		baseURL:    baseURL,
 		consoleKey: consoleKey,
 		clientKey:  clientKey,
 		http:       &http.Client{},
@@ -36,7 +48,7 @@ func (c *Client) HasClientKey() bool {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body any) (json.RawMessage, error) {
-	url := BaseURL + path
+	reqURL := c.baseURL + path
 
 	var bodyReader io.Reader
 	if body != nil {
@@ -47,7 +59,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 		bodyReader = bytes.NewReader(b)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
 	if err != nil {
 		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
 	}
@@ -72,6 +84,28 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 	}
 
 	return json.RawMessage(respBody), nil
+}
+
+// doAndDecode performs an API call and decodes the response's "data" field into T.
+func doAndDecode[T any](c *Client, ctx context.Context, method, path string, body any) (*T, error) {
+	raw, err := c.do(ctx, method, path, body)
+	if err != nil {
+		return nil, err
+	}
+	var resp entityResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
+	}
+	var result T
+	if err := json.Unmarshal(resp.Data, &result); err != nil {
+		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
+	}
+	return &result, nil
+}
+
+// getAndDecode performs a GET and decodes the response's "data" field into T.
+func getAndDecode[T any](c *Client, ctx context.Context, path string) (*T, error) {
+	return doAndDecode[T](c, ctx, http.MethodGet, path, nil)
 }
 
 func classifyHTTPError(status int, body []byte) *agenterrors.APIError {
@@ -129,21 +163,18 @@ func (p *PaginationInfo) HasMore() bool {
 }
 
 func (c *Client) list(ctx context.Context, path string, limit, page int, tags []string) (*listResponse, error) {
-	sep := "?"
-	if strings.Contains(path, "?") {
-		sep = "&"
-	}
+	params := url.Values{}
 	if limit > 0 {
-		path += fmt.Sprintf("%slimit=%d", sep, limit)
-		sep = "&"
+		params.Set("limit", fmt.Sprintf("%d", limit))
 	}
 	if page > 0 {
-		path += fmt.Sprintf("%spage=%d", sep, page)
-		sep = "&"
+		params.Set("page", fmt.Sprintf("%d", page))
 	}
 	for _, tag := range tags {
-		path += fmt.Sprintf("%stags=%s", sep, tag)
-		sep = "&"
+		params.Add("tags", tag)
+	}
+	if encoded := params.Encode(); encoded != "" {
+		path += "?" + encoded
 	}
 
 	raw, err := c.do(ctx, http.MethodGet, path, nil)
@@ -160,16 +191,4 @@ func (c *Client) list(ctx context.Context, path string, limit, page int, tags []
 
 type entityResponse struct {
 	Data json.RawMessage `json:"data"`
-}
-
-func (c *Client) getEntity(ctx context.Context, path string) (json.RawMessage, error) {
-	raw, err := c.do(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	var resp entityResponse
-	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
-	}
-	return resp.Data, nil
 }

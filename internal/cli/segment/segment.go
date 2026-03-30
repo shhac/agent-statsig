@@ -48,14 +48,12 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				}
 
 				if search != "" {
-					segments = filterSegments(segments, search)
+					segments = shared.FilterBySearch(segments, search,
+						func(s api.Segment) string { return s.Name },
+						func(s api.Segment) string { return s.Description })
 				}
 
-				items := make([]any, len(segments))
-				for i, s := range segments {
-					items[i] = s
-				}
-				shared.WritePaginatedList(items, pagination, g.Format)
+				shared.WritePaginatedList(shared.ToAnySlice(segments), pagination, g.Format)
 				return nil
 			})
 		},
@@ -65,17 +63,6 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd.Flags().StringVar(&tag, "tag", "", "Filter by tag (comma-separated)")
 	cmd.Flags().StringVar(&search, "search", "", "Filter by name (client-side substring match)")
 	parent.AddCommand(cmd)
-}
-
-func filterSegments(segments []api.Segment, search string) []api.Segment {
-	search = strings.ToLower(search)
-	var filtered []api.Segment
-	for _, s := range segments {
-		if strings.Contains(strings.ToLower(s.Name), search) || strings.Contains(strings.ToLower(s.Description), search) {
-			filtered = append(filtered, s)
-		}
-	}
-	return filtered
 }
 
 func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -240,4 +227,3 @@ func registerIDsRemove(parent *cobra.Command, globals func() *shared.GlobalFlags
 	cmd.MarkFlagRequired("ids")
 	parent.AddCommand(cmd)
 }
-
