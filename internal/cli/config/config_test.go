@@ -9,26 +9,52 @@ import (
 
 func TestValidateAgainstSchema(t *testing.T) {
 	schema := json.RawMessage(`{
+		"type": "object",
 		"properties": {
-			"theme": {"type": "string"},
-			"limit": {"type": "number"}
+			"enabledGlobally": {"type": "boolean"},
+			"allowOrganizers": {"type": "array", "items": {"type": "string"}},
+			"denyOrganizers": {"type": "array", "items": {"type": "string"}}
 		},
-		"required": ["theme"]
+		"required": ["enabledGlobally", "allowOrganizers", "denyOrganizers"]
 	}`)
 
-	err := ValidateAgainstSchema(schema, map[string]any{"theme": "dark", "limit": 10})
+	// Valid value
+	err := ValidateAgainstSchema(schema, map[string]any{
+		"enabledGlobally": true,
+		"allowOrganizers": []any{},
+		"denyOrganizers":  []any{},
+	})
 	if err != nil {
 		t.Errorf("valid value should pass: %v", err)
 	}
 
-	err = ValidateAgainstSchema(schema, map[string]any{"limit": 10})
+	// Missing required field
+	err = ValidateAgainstSchema(schema, map[string]any{
+		"enabledGlobally": true,
+		"allowOrganizers": []any{},
+	})
 	if err == nil {
 		t.Error("should error on missing required field")
 	}
 
-	err = ValidateAgainstSchema(schema, map[string]any{"theme": "dark", "unknown": true})
+	// Wrong type (string instead of boolean)
+	err = ValidateAgainstSchema(schema, map[string]any{
+		"enabledGlobally": "not a bool",
+		"allowOrganizers": []any{},
+		"denyOrganizers":  []any{},
+	})
 	if err == nil {
-		t.Error("should error on unknown field")
+		t.Error("should error on wrong type")
+	}
+
+	// Wrong array item type (number instead of string)
+	err = ValidateAgainstSchema(schema, map[string]any{
+		"enabledGlobally": true,
+		"allowOrganizers": []any{123},
+		"denyOrganizers":  []any{},
+	})
+	if err == nil {
+		t.Error("should error on wrong array item type")
 	}
 }
 
@@ -39,11 +65,17 @@ func TestValidateAgainstSchemaNoSchema(t *testing.T) {
 	}
 }
 
-func TestValidateAgainstSchemaNonObject(t *testing.T) {
-	schema := json.RawMessage(`{"properties": {"x": {}}}`)
-	err := ValidateAgainstSchema(schema, "not a map")
+func TestValidateAgainstSchemaEmptySchema(t *testing.T) {
+	err := ValidateAgainstSchema(json.RawMessage(`{}`), map[string]any{"anything": true})
 	if err != nil {
-		t.Errorf("non-object value should pass (no validation): %v", err)
+		t.Errorf("empty schema should pass: %v", err)
+	}
+}
+
+func TestValidateAgainstSchemaInvalidSchemaJSON(t *testing.T) {
+	err := ValidateAgainstSchema(json.RawMessage(`not json`), map[string]any{"x": 1})
+	if err != nil {
+		t.Errorf("invalid schema JSON should be silently ignored: %v", err)
 	}
 }
 

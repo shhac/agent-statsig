@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/cobra"
 
 	"github.com/shhac/agent-statsig/internal/api"
@@ -125,7 +126,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 	cmd.MarkFlagRequired("name")
 	cmd.Flags().StringVar(&criteria, "criteria", "", "Condition type")
 	cmd.MarkFlagRequired("criteria")
-	cmd.Flags().StringVar(&operator, "operator", "", "Condition operator")
+	cmd.Flags().StringVar(&operator, "operator", "any", "Condition operator (default: any = case-insensitive match)")
 	cmd.Flags().StringVar(&values, "values", "", "Comma-separated target values")
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 100, "Pass percentage")
 	cmd.Flags().StringVar(&environments, "environments", "", "Comma-separated environments")
@@ -205,44 +206,29 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 	parent.AddCommand(cmd)
 }
 
-// ValidateAgainstSchema checks a value against a JSON schema's properties and required fields.
+// ValidateAgainstSchema validates a value against a JSON Schema using full spec compliance.
 func ValidateAgainstSchema(schema json.RawMessage, value any) error {
-	var schemaObj map[string]any
+	if len(schema) == 0 {
+		return nil
+	}
+
+	var schemaObj any
 	if err := json.Unmarshal(schema, &schemaObj); err != nil {
 		return nil
 	}
 
-	props, ok := schemaObj["properties"].(map[string]any)
-	if !ok {
+	compiler := jsonschema.NewCompiler()
+	if err := compiler.AddResource("schema.json", schemaObj); err != nil {
+		return nil
+	}
+	compiled, err := compiler.Compile("schema.json")
+	if err != nil {
 		return nil
 	}
 
-	valueMap, ok := value.(map[string]any)
-	if !ok {
-		return nil
+	if err := compiled.Validate(value); err != nil {
+		return agenterrors.Newf(agenterrors.FixableByAgent, "return value does not match config schema: %s", err).
+			WithHint("Check the config's schema with 'config get <name>'")
 	}
-
-	required, _ := schemaObj["required"].([]any)
-	requiredSet := make(map[string]bool)
-	for _, r := range required {
-		if s, ok := r.(string); ok {
-			requiredSet[s] = true
-		}
-	}
-
-	for key := range requiredSet {
-		if _, ok := valueMap[key]; !ok {
-			return agenterrors.Newf(agenterrors.FixableByAgent, "missing required field %q in return value", key).
-				WithHint("Schema requires: " + strings.Join(shared.MapKeys(requiredSet), ", "))
-		}
-	}
-
-	for key := range valueMap {
-		if _, ok := props[key]; !ok {
-			return agenterrors.Newf(agenterrors.FixableByAgent, "unknown field %q in return value", key).
-				WithHint("Known fields: " + strings.Join(shared.MapKeys(props), ", "))
-		}
-	}
-
 	return nil
 }

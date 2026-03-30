@@ -75,11 +75,21 @@ func NewClientFromProject(projectAlias string) (*api.Client, error) {
 	return api.NewClient(cred.ConsoleKey, cred.ClientKey), nil
 }
 
+// ClientFactory allows overriding client creation for testing.
+// When set, WithClient uses this instead of NewClientFromProject.
+var ClientFactory func() (*api.Client, error)
+
 func WithClient(projectAlias string, timeout int, fn func(ctx context.Context, client *api.Client) error) error {
 	ctx, cancel := MakeContext(timeout)
 	defer cancel()
 
-	client, err := NewClientFromProject(projectAlias)
+	var client *api.Client
+	var err error
+	if ClientFactory != nil {
+		client, err = ClientFactory()
+	} else {
+		client, err = NewClientFromProject(projectAlias)
+	}
 	if err != nil {
 		output.WriteError(os.Stderr, err)
 		return nil

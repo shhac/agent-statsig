@@ -46,7 +46,7 @@ FEATURE GATES
   gate rollout <name> --percent <0-100>
 
   gate rule list <gate>
-  gate rule add <gate> --name <rule-name> --criteria <type> --operator <op> --values <csv> [--pass-percent N] [--environments <csv>]
+  gate rule add <gate> --name <rule-name> --criteria <type> --values <csv> [--operator <op>] [--pass-percent N] [--environments <csv>]
   gate rule update <gate> --rule <rule-id> [--add-values <csv>] [--remove-values <csv>] [--pass-percent N]
   gate rule remove <gate> --rule <rule-id>
   gate criteria
@@ -62,7 +62,7 @@ DYNAMIC CONFIGS
   config update <name> <json>
 
   config rule list <config>
-  config rule add <config> --name <rule-name> --criteria <type> --operator <op> --values <csv> --return-value <json> [--pass-percent N] [--environments <csv>]
+  config rule add <config> --name <rule-name> --criteria <type> --values <csv> --return-value <json> [--operator <op>] [--pass-percent N] [--environments <csv>]
   config rule update <config> --rule <rule-id> [--add-values <csv>] [--remove-values <csv>] [--pass-percent N] [--return-value <json>]
   config rule remove <config> --rule <rule-id>
 
