@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/cobra"
@@ -53,9 +52,9 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		name         string
 		criteria     string
 		operator     string
-		values       string
+		values       []string
 		passPercent  float64
-		environments string
+		environments []string
 		field        string
 		returnValue  string
 	)
@@ -78,18 +77,15 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if field != "" {
 					condition.Field = field
 				}
-				if values != "" {
-					condition.TargetValue = strings.Split(values, ",")
+				if len(values) > 0 {
+					condition.TargetValue = values
 				}
 
 				rule := api.Rule{
 					Name:           name,
 					PassPercentage: passPercent,
 					Conditions:     []api.Condition{condition},
-				}
-
-				if environments != "" {
-					rule.Environments = strings.Split(environments, ",")
+					Environments:   environments,
 				}
 
 				var rv any
@@ -127,9 +123,9 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 	cmd.Flags().StringVar(&criteria, "criteria", "", "Condition type")
 	cmd.MarkFlagRequired("criteria")
 	cmd.Flags().StringVar(&operator, "operator", "any", "Condition operator (default: any = case-insensitive match)")
-	cmd.Flags().StringVar(&values, "values", "", "Comma-separated target values")
+	cmd.Flags().StringArrayVar(&values, "value", nil, "Target value (repeatable: --value a --value b)")
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 100, "Pass percentage")
-	cmd.Flags().StringVar(&environments, "environments", "", "Comma-separated environments")
+	cmd.Flags().StringArrayVar(&environments, "env", nil, "Environment (repeatable: --env staging --env production)")
 	cmd.Flags().StringVar(&field, "field", "", "Custom field name")
 	cmd.Flags().StringVar(&returnValue, "return-value", "", "JSON return value for this rule")
 	parent.AddCommand(cmd)

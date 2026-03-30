@@ -23,6 +23,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerDelete(seg, globals)
 	registerArchive(seg, globals)
 	registerIDs(seg, globals)
+	registerUsage(seg, globals)
 
 	root.AddCommand(seg)
 }
@@ -181,7 +182,7 @@ func registerIDsGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerIDsAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	var idsFlag string
+	var ids []string
 
 	cmd := &cobra.Command{
 		Use:   "add <segment>",
@@ -190,22 +191,21 @@ func registerIDsAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				idList := strings.Split(idsFlag, ",")
-				if err := client.AddSegmentIDs(ctx, args[0], idList); err != nil {
+				if err := client.AddSegmentIDs(ctx, args[0], ids); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "added": len(idList)}, true)
+				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "added": len(ids)}, true)
 				return nil
 			})
 		},
 	}
-	cmd.Flags().StringVar(&idsFlag, "ids", "", "Comma-separated IDs to add")
-	cmd.MarkFlagRequired("ids")
+	cmd.Flags().StringArrayVar(&ids, "id", nil, "ID to add (repeatable: --id user1 --id user2)")
+	cmd.MarkFlagRequired("id")
 	parent.AddCommand(cmd)
 }
 
 func registerIDsRemove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	var idsFlag string
+	var ids []string
 
 	cmd := &cobra.Command{
 		Use:   "remove <segment>",
@@ -214,16 +214,15 @@ func registerIDsRemove(parent *cobra.Command, globals func() *shared.GlobalFlags
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				idList := strings.Split(idsFlag, ",")
-				if err := client.RemoveSegmentIDs(ctx, args[0], idList); err != nil {
+				if err := client.RemoveSegmentIDs(ctx, args[0], ids); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "removed": len(idList)}, true)
+				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "removed": len(ids)}, true)
 				return nil
 			})
 		},
 	}
-	cmd.Flags().StringVar(&idsFlag, "ids", "", "Comma-separated IDs to remove")
-	cmd.MarkFlagRequired("ids")
+	cmd.Flags().StringArrayVar(&ids, "id", nil, "ID to remove (repeatable: --id user1 --id user2)")
+	cmd.MarkFlagRequired("id")
 	parent.AddCommand(cmd)
 }

@@ -167,7 +167,7 @@ func TestConfigRuleAddWithSchemaValidation(t *testing.T) {
 		"--name", "Dark theme",
 		"--criteria", "email",
 		"--operator", "any",
-		"--values", "user@test.com",
+		"--value", "user@test.com",
 		"--return-value", `{"theme":"dark"}`)
 
 	if out == "" {
@@ -189,7 +189,7 @@ func TestConfigRuleAddSchemaViolation(t *testing.T) {
 		"--name", "Bad",
 		"--criteria", "email",
 		"--operator", "any",
-		"--values", "user@test.com",
+		"--value", "user@test.com",
 		"--return-value", `{"unknown_field":true}`)
 
 	var parsed map[string]any

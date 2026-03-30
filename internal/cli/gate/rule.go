@@ -2,7 +2,6 @@ package gate
 
 import (
 	"context"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -51,9 +50,9 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		name         string
 		criteria     string
 		operator     string
-		values       string
+		values       []string
 		passPercent  float64
-		environments string
+		environments []string
 		field        string
 	)
 
@@ -77,18 +76,15 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 					condition.Field = field
 				}
 
-				if values != "" {
-					condition.TargetValue = strings.Split(values, ",")
+				if len(values) > 0 {
+					condition.TargetValue = values
 				}
 
 				rule := api.Rule{
 					Name:           name,
 					PassPercentage: passPercent,
 					Conditions:     []api.Condition{condition},
-				}
-
-				if environments != "" {
-					rule.Environments = strings.Split(environments, ",")
+					Environments:   environments,
 				}
 
 				created, err := client.AddGateRule(ctx, args[0], rule)
@@ -105,9 +101,9 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 	cmd.Flags().StringVar(&criteria, "criteria", "", "Condition type (e.g. email, user_id, country)")
 	cmd.MarkFlagRequired("criteria")
 	cmd.Flags().StringVar(&operator, "operator", "any", "Condition operator (default: any = case-insensitive match)")
-	cmd.Flags().StringVar(&values, "values", "", "Comma-separated target values")
+	cmd.Flags().StringArrayVar(&values, "value", nil, "Target value (repeatable: --value a --value b)")
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 100, "Pass percentage (0-100)")
-	cmd.Flags().StringVar(&environments, "environments", "", "Comma-separated environments")
+	cmd.Flags().StringArrayVar(&environments, "env", nil, "Environment (repeatable: --env staging --env production)")
 	cmd.Flags().StringVar(&field, "field", "", "Custom field name (for custom_field criteria)")
 	parent.AddCommand(cmd)
 }
@@ -115,8 +111,8 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var (
 		ruleID       string
-		addValues    string
-		removeValues string
+		addValues    []string
+		removeValues []string
 		passPercent  float64
 		setPercent   bool
 	)
@@ -147,7 +143,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 				update := BuildRuleUpdate(targetRule, addValues, removeValues, passPercent, setPercent)
 				if len(update) == 0 {
 					return agenterrors.New("no updates specified", agenterrors.FixableByAgent).
-						WithHint("Use --add-values, --remove-values, or --pass-percent")
+						WithHint("Use --add-value, --remove-value, or --pass-percent")
 				}
 
 				if err := client.UpdateGateRule(ctx, args[0], ruleID, update); err != nil {
@@ -160,8 +156,8 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 	}
 	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID to update")
 	cmd.MarkFlagRequired("rule")
-	cmd.Flags().StringVar(&addValues, "add-values", "", "Values to add (comma-separated)")
-	cmd.Flags().StringVar(&removeValues, "remove-values", "", "Values to remove (comma-separated)")
+	cmd.Flags().StringArrayVar(&addValues, "add-value", nil, "Value to add (repeatable)")
+	cmd.Flags().StringArrayVar(&removeValues, "remove-value", nil, "Value to remove (repeatable)")
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 0, "Pass percentage (0-100)")
 	cmd.Flags().BoolVar(&setPercent, "set-percent", false, "Apply --pass-percent value")
 	parent.AddCommand(cmd)
@@ -201,13 +197,13 @@ func FindRuleByID(rules []api.Rule, id string) *api.Rule {
 }
 
 // BuildRuleUpdate constructs an update map for a rule, merging value changes.
-func BuildRuleUpdate(rule *api.Rule, addValues, removeValues string, passPercent float64, setPercent bool) map[string]any {
+func BuildRuleUpdate(rule *api.Rule, addValues, removeValues []string, passPercent float64, setPercent bool) map[string]any {
 	update := make(map[string]any)
 	if setPercent {
 		update["passPercentage"] = passPercent
 	}
 
-	if addValues == "" && removeValues == "" {
+	if len(addValues) == 0 && len(removeValues) == 0 {
 		return update
 	}
 
@@ -226,18 +222,14 @@ func BuildRuleUpdate(rule *api.Rule, addValues, removeValues string, passPercent
 }
 
 // MergeConditionValues adds and removes values from an existing slice.
-func MergeConditionValues(existing []string, add, remove string) []string {
-	if add != "" {
-		for _, v := range strings.Split(add, ",") {
-			if !shared.SliceContains(existing, v) {
-				existing = append(existing, v)
-			}
+func MergeConditionValues(existing, add, remove []string) []string {
+	for _, v := range add {
+		if !shared.SliceContains(existing, v) {
+			existing = append(existing, v)
 		}
 	}
-	if remove != "" {
-		for _, v := range strings.Split(remove, ",") {
-			existing = shared.SliceRemove(existing, v)
-		}
+	for _, v := range remove {
+		existing = shared.SliceRemove(existing, v)
 	}
 	return existing
 }

@@ -7,8 +7,10 @@ Statsig feature flag CLI for AI agents. Manage gates, dynamic configs, experimen
 - **Four entity types**: feature gates, dynamic configs, experiments, segments
 - **Full CRUD + lifecycle**: create, read, update, delete, enable/disable, archive, and entity-specific operations (rollout, start/ship experiments, manage segment IDs)
 - **Rule manipulation**: add, update, and remove targeting rules with criteria validation
+- **JSON Schema validation**: dynamic config return values validated client-side against the config's schema
 - **Structured output**: JSON/YAML/NDJSON output with classified errors (`fixable_by: agent|human|retry`)
 - **Secure credential storage**: macOS Keychain integration, multi-project support via aliases
+- **Progressive documentation**: top-level overview → per-entity reference → criteria discovery
 - **Zero runtime dependencies**: single compiled binary
 
 ## Installation
@@ -37,16 +39,10 @@ make build
 
 ### 1. Add a project
 
-Get your Console API key from **Statsig Console → Settings → API Keys**.
+Get your Console API key from **Statsig Console → Settings → Keys & Environments**.
 
 ```bash
-agent-statsig project add myproject --console-key "console-xxx"
-```
-
-Optionally add a client key for evaluation features:
-
-```bash
-agent-statsig project update myproject --client-key "client-xxx"
+agent-statsig project add myproject --console-key "console-xxx" --client-key "client-xxx"
 ```
 
 ### 2. Test connectivity
@@ -55,61 +51,64 @@ agent-statsig project update myproject --client-key "client-xxx"
 agent-statsig project test
 ```
 
-### 3. List gates
+### 3. Explore
 
 ```bash
 agent-statsig gate list
-agent-statsig gate list --tag core --search "onboarding"
-```
-
-### 4. Inspect a gate
-
-```bash
 agent-statsig gate get my_feature_gate
+agent-statsig config list
+agent-statsig experiment list --search "checkout"
 ```
 
-### 5. Modify a gate
+### 4. Modify
 
 ```bash
-# Enable/disable
-agent-statsig gate enable my_feature_gate
+# Enable a gate
+agent-statsig gate enable my_gate
 
-# Set rollout percentage
-agent-statsig gate rollout my_feature_gate --percent 50
+# Roll out to 50%
+agent-statsig gate rollout my_gate --percent 50
 
 # Add a targeting rule
-agent-statsig gate rule add my_feature_gate \
+agent-statsig gate rule add my_gate \
   --name "Internal team" \
   --criteria email \
   --operator str_contains_any \
-  --values "@mycompany.com" \
-  --pass-percent 100
+  --value "@mycompany.com"
+
+# Multiple values
+agent-statsig gate rule add my_gate \
+  --name "Beta users" \
+  --criteria email \
+  --value "alice@example.com" \
+  --value "bob@example.com"
+
+# Start an experiment
+agent-statsig experiment start my_experiment
 ```
 
-## Usage Reference
+## Documentation
 
-Run `agent-statsig usage` for the full LLM-optimized reference card.
+The CLI has layered documentation for progressive discovery:
 
-### Global Flags
+```bash
+agent-statsig usage              # Top-level overview + common workflows
+agent-statsig gate llm-help         # Feature gates detailed reference
+agent-statsig config llm-help       # Dynamic configs + schema validation
+agent-statsig experiment llm-help   # Experiments + lifecycle
+agent-statsig segment llm-help      # Segments + ID list management
+agent-statsig gate criteria      # List all 25 condition types + operators
+```
 
-| Flag | Description |
-|------|-------------|
-| `-p, --project <alias>` | Project alias (or set `AGENT_STATSIG_PROJECT`) |
-| `--format json\|yaml\|jsonl` | Output format (default: json) |
-| `--timeout <ms>` | Request timeout in milliseconds |
+## Output Formats
 
-### Commands
+```bash
+agent-statsig gate get my_gate                    # JSON (default, pretty)
+agent-statsig gate list --format jsonl             # NDJSON (one per line)
+agent-statsig gate get my_gate --format yaml       # YAML
+```
 
-| Command | Description |
-|---------|-------------|
-| `project` | Manage Statsig project connections |
-| `gate` | Manage feature gates |
-| `config` | Manage dynamic configs |
-| `experiment` | Manage experiments |
-| `segment` | Manage segments |
-| `usage` | Show LLM-optimized reference card |
-
-### Error Output
+## Error Output
 
 All errors are written to stderr as structured JSON:
 
@@ -130,18 +129,18 @@ All errors are written to stderr as structured JSON:
 ## Multi-Project Support
 
 ```bash
-# Add multiple projects
 agent-statsig project add production --console-key "console-xxx"
 agent-statsig project add staging --console-key "console-yyy"
-
-# Set default
 agent-statsig project set-default staging
-
-# Override per-command
 agent-statsig -p production gate list
+```
 
-# Or via environment variable
-AGENT_STATSIG_PROJECT=production agent-statsig gate list
+## Claude Code Skill
+
+Install as a Claude Code skill for automatic discovery:
+
+```bash
+npx skills add shhac/agent-statsig
 ```
 
 ## License

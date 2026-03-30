@@ -8,7 +8,7 @@ Statsig feature flag CLI for AI agents. Wraps the Statsig Console API (v1, base 
 cmd/agent-statsig/main.go     Entry point (version stamped via ldflags)
 internal/
   api/                         Statsig Console API HTTP client
-    client.go                  Base HTTP client, auth, error classification
+    client.go                  Base client (BaseURL field for testability), doAndDecode[T] generic
     types.go                   Shared types: Gate, DynamicConfig, Experiment, Segment, Rule, Condition
     gates.go                   Gate endpoints
     configs.go                 Dynamic config endpoints
@@ -16,27 +16,48 @@ internal/
     segments.go                Segment endpoints (incl. ID list management)
   cli/                         Cobra command tree
     root.go                    Global flags (--project, --format, --timeout), command registration
-    usage.go                   LLM reference card
-    shared/shared.go           WithClient helper, project resolution, paginated list output
+    usage.go                   Top-level LLM reference card (progressive disclosure → per-entity usage)
+    shared/
+      shared.go                WithClient (DI-ready via ClientFactory), project resolution, generics
+      testhelper.go            SetupMockServer for httptest-based CLI testing
     project/project.go         Project CRUD: add, update, remove, list, set-default, test
-    gate/gate.go               Gate commands: list, get, create, delete, enable/disable, archive, launch, update, rollout, check, criteria
-    gate/rule.go               Gate rule subcommands: list, add, update, remove + criteria validation
-    config/config.go           Dynamic config commands (same shape as gate)
-    config/rule.go             Config rule subcommands + JSON schema validation for return values
-    experiment/experiment.go   Experiment commands incl. start, reset, abandon, ship
-    segment/segment.go         Segment commands incl. ids get/add/remove
+    gate/
+      gate.go                  Gate commands: list, get, create, delete, enable/disable, archive, launch, update, check
+      rollout.go               Rollout command + FindPublicRule pure helper
+      criteria.go              Criteria listing (25 condition types + operators)
+      rule.go                  Rule subcommands: list, add, update, remove + FindRuleByID, BuildRuleUpdate, MergeConditionValues
+      usage.go                 Per-entity reference card
+    config/
+      config.go                Dynamic config commands
+      rule.go                  Config rule subcommands + ValidateAgainstSchema (santhosh-tekuri/jsonschema/v6)
+      usage.go                 Per-entity reference card
+    experiment/
+      experiment.go            Experiment commands incl. start, reset, abandon, ship
+      usage.go                 Per-entity reference card
+    segment/
+      segment.go               Segment commands incl. ids get/add/remove
+      usage.go                 Per-entity reference card
   config/config.go             App config file I/O (~/.config/agent-statsig/config.json)
-  credential/credential.go     Keychain-backed credential storage (console key + client key per project)
+  credential/
+    credential.go              Credential storage (index file + keychain integration)
+    keychain.go                macOS Keychain operations (keychainStore/Get/Delete)
   errors/errors.go             APIError type with fixable_by classification
   output/output.go             JSON/YAML/NDJSON formatters, WriteError, PrintJSON
+skills/
+  agent-statsig/SKILL.md       Claude Code skill definition
 ```
 
 ## Key Design Decisions
 
 - **Single binary, zero runtime deps**: pure Go, CGO_ENABLED=0
 - **Structured JSON output to stdout**: errors to stderr as `{error, hint, fixable_by}` JSON
+- **Repeatable flags**: `--value`, `--env`, `--id` use StringArrayVar (not comma-separated) to handle values with special characters
+- **Default operator**: `--operator` defaults to `any` (case-insensitive match), matching Statsig UI behavior
+- **JSON Schema validation**: `santhosh-tekuri/jsonschema/v6` for full draft 2020-12 compliance on dynamic config return values
+- **DI for testing**: `shared.ClientFactory` override enables httptest-based CLI command tests
+- **Condition types are universal**: the 25 types are a platform-level constant (not per-project). Per-project customization uses `custom_field` and `unit_id`
 - **macOS Keychain**: credentials stored in system Keychain (service: `app.paulie.agent-statsig`); falls back to file on Linux/Windows
-- **Project aliases**: one credential per project (console key + optional client key), switchable via `--project` flag or `AGENT_STATSIG_PROJECT` env var
+- **Progressive documentation**: `usage` → per-entity `usage` → `gate criteria` for condition discovery
 - **Cobra CLI framework**: same pattern as other agent-* tools
 - **API version pinned**: `STATSIG-API-VERSION: 20240601` header sent on all requests
 
@@ -52,14 +73,18 @@ make dev ARGS="..." # Run in dev mode
 make vet            # go vet
 ```
 
-## Adding a New Entity Type
+## Testing
 
-1. Add API methods in `internal/api/<entity>.go`
-2. Add types to `internal/api/types.go`
-3. Create CLI package `internal/cli/<entity>/`
-4. Register in `internal/cli/root.go`
-5. Update reference card in `internal/cli/usage.go`
-6. Add tests
+Tests use `shared.SetupMockServer(t, handler)` to inject an httptest server via `ClientFactory`. This enables full CLI command testing without real credentials.
+
+```go
+func TestGateGet(t *testing.T) {
+    out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+        w.Write(entityJSON(api.Gate{Name: "my_gate"}))
+    }, "gate", "get", "my_gate")
+    // assert on out...
+}
+```
 
 ## Releasing
 
@@ -76,3 +101,4 @@ Distributed via GitHub releases and Homebrew (`shhac/tap`).
 - PATCH = partial update, POST to `/{id}` = full replacement
 - Rules: conditions within a rule are AND-ed; rules evaluated top-to-bottom (first match wins)
 - 25 condition types with type-specific operators (see `api/types.go` for full mapping)
+- Condition types are universal across all Statsig projects (not configurable per-project)

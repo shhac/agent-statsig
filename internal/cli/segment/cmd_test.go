@@ -140,7 +140,7 @@ func TestSegmentIDsAdd(t *testing.T) {
 			t.Errorf("expected 2 ids, got %d", len(ids))
 		}
 		w.Write([]byte(`{"message":"ok"}`))
-	}, "segment", "ids", "add", "my_seg", "--ids", "user1,user2")
+	}, "segment", "ids", "add", "my_seg", "--id", "user1", "--id", "user2")
 
 	var parsed map[string]any
 	json.Unmarshal([]byte(out), &parsed)
@@ -155,7 +155,7 @@ func TestSegmentIDsRemove(t *testing.T) {
 			t.Errorf("method = %s", r.Method)
 		}
 		w.Write([]byte(`{"message":"ok"}`))
-	}, "segment", "ids", "remove", "my_seg", "--ids", "user1")
+	}, "segment", "ids", "remove", "my_seg", "--id", "user1")
 
 	var parsed map[string]any
 	json.Unmarshal([]byte(out), &parsed)

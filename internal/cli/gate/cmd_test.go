@@ -249,7 +249,7 @@ func TestGateRuleAdd(t *testing.T) {
 		"--name", "Team",
 		"--criteria", "email",
 		"--operator", "str_contains_any",
-		"--values", "@company.com",
+		"--value", "@company.com",
 		"--pass-percent", "100")
 
 	if out == "" {
