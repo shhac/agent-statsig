@@ -8,7 +8,7 @@ import (
 
 func registerUsageCommand(root *cobra.Command) {
 	usage := &cobra.Command{
-		Use:   "usage",
+		Use:   "llm-help",
 		Short: "Show LLM-optimized reference card",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Print(referenceCard)

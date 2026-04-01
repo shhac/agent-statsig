@@ -92,7 +92,7 @@ agent-statsig gate llm-help
 agent-statsig config llm-help
 agent-statsig experiment llm-help
 agent-statsig segment llm-help
-agent-statsig usage                  # top-level overview
+agent-statsig llm-help               # top-level overview
 ```
 
 ## Key Concepts

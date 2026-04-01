@@ -16,7 +16,7 @@ internal/
     segments.go                Segment endpoints (incl. ID list management)
   cli/                         Cobra command tree
     root.go                    Global flags (--project, --format, --timeout), command registration
-    usage.go                   Top-level LLM reference card (progressive disclosure → per-entity usage)
+    usage.go                   Top-level LLM reference card (progressive disclosure → per-entity llm-help)
     shared/
       shared.go                WithClient (DI-ready via ClientFactory), project resolution, generics
       testhelper.go            SetupMockServer for httptest-based CLI testing
@@ -57,7 +57,7 @@ skills/
 - **DI for testing**: `shared.ClientFactory` override enables httptest-based CLI command tests
 - **Condition types are universal**: the 25 types are a platform-level constant (not per-project). Per-project customization uses `custom_field` and `unit_id`
 - **macOS Keychain**: credentials stored in system Keychain (service: `app.paulie.agent-statsig`); falls back to file on Linux/Windows
-- **Progressive documentation**: `usage` → per-entity `usage` → `gate criteria` for condition discovery
+- **Progressive documentation**: `llm-help` → per-entity `llm-help` → `gate criteria` for condition discovery
 - **Cobra CLI framework**: same pattern as other agent-* tools
 - **API version pinned**: `STATSIG-API-VERSION: 20240601` header sent on all requests
 
