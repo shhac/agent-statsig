@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	cliconfig "github.com/shhac/agent-statsig/internal/cli/config"
@@ -49,5 +52,9 @@ func newRootCmd(version string) *cobra.Command {
 }
 
 func Execute(version string) error {
-	return newRootCmd(version).Execute()
+	err := newRootCmd(version).Execute()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	return err
 }
