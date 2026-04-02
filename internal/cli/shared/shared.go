@@ -244,10 +244,10 @@ func WritePaginatedList(items []any, pagination *api.PaginationInfo, format stri
 	if f == output.FormatNDJSON {
 		w := output.NewNDJSONWriter(os.Stdout)
 		for _, item := range items {
-			w.WriteItem(item)
+			_ = w.WriteItem(item)
 		}
 		if pagination != nil {
-			w.WritePagination(&output.Pagination{
+			_ = w.WritePagination(&output.Pagination{
 				HasMore:    pagination.HasMore(),
 				TotalItems: pagination.TotalItems,
 				Page:       pagination.PageNumber,

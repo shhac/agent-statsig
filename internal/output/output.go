@@ -58,7 +58,7 @@ func PrintJSON(data any, prune bool) {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		enc.SetEscapeHTML(false)
-		enc.Encode(indented)
+		_ = enc.Encode(indented)
 	}
 }
 
@@ -77,7 +77,7 @@ func WriteError(w io.Writer, err error) {
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	enc.Encode(payload)
+	_ = enc.Encode(payload)
 }
 
 // NDJSONWriter writes one JSON object per line to the given writer.

@@ -22,7 +22,7 @@ func keychainStore(name, consoleKey, clientKey string) error {
 	})
 
 	// Delete existing entry if present (ignore errors).
-	exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
+	_ = exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
 
 	return exec.Command("security", "add-generic-password",
 		"-s", keychainService, "-a", name, "-w", string(data),
@@ -55,5 +55,5 @@ func keychainDelete(name string) {
 	if runtime.GOOS != "darwin" {
 		return
 	}
-	exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
+	_ = exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
 }

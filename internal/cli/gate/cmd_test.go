@@ -185,10 +185,10 @@ func TestGateRolloutNew(t *testing.T) {
 	callCount := 0
 	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
 		callCount++
-		switch {
-		case r.Method == "GET":
+		switch r.Method {
+		case "GET":
 			w.Write(entityJSON(api.Gate{Name: "my_gate", Rules: []api.Rule{}}))
-		case r.Method == "POST":
+		case "POST":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
 			w.Write(entityJSON(api.Rule{Name: "Everyone"}))

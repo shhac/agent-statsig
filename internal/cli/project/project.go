@@ -137,7 +137,7 @@ func registerRemove(parent *cobra.Command) {
 				return nil
 			}
 
-			config.RemoveProject(alias)
+			_ = config.RemoveProject(alias)
 
 			output.PrintJSON(map[string]any{
 				"status": "ok",

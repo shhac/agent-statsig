@@ -72,7 +72,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 	if err != nil {
 		return nil, agenterrors.Wrap(err, agenterrors.FixableByRetry).WithHint("Network error — check connectivity")
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // best-effort close
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -113,7 +113,7 @@ func classifyHTTPError(status int, body []byte) *agenterrors.APIError {
 		Message string `json:"message"`
 		Error   string `json:"error"`
 	}
-	json.Unmarshal(body, &parsed)
+	_ = json.Unmarshal(body, &parsed)
 
 	msg := parsed.Message
 	if msg == "" {
