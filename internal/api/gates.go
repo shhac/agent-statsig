@@ -25,10 +25,13 @@ func (c *Client) GetGate(ctx context.Context, id string) (*Gate, error) {
 	return getAndDecode[Gate](c, ctx, fmt.Sprintf("%s/%s", gatesPath, id))
 }
 
-func (c *Client) CreateGate(ctx context.Context, name, description string) (*Gate, error) {
+func (c *Client) CreateGate(ctx context.Context, name, description string, tags []string) (*Gate, error) {
 	body := map[string]any{"name": name}
 	if description != "" {
 		body["description"] = description
+	}
+	if len(tags) > 0 {
+		body["tags"] = tags
 	}
 	return doAndDecode[Gate](c, ctx, http.MethodPost, gatesPath, body)
 }

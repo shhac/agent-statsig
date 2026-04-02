@@ -234,7 +234,7 @@ func TestCreateGate(t *testing.T) {
 		w.Write(entityJSON(Gate{ID: "g-1", Name: "new_gate"}))
 	})
 
-	gate, err := client.CreateGate(context.Background(), "new_gate", "A gate")
+	gate, err := client.CreateGate(context.Background(), "new_gate", "A gate", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,6 +401,129 @@ func TestGetSegment(t *testing.T) {
 	}
 	if seg.Type != "id_list" {
 		t.Errorf("type = %q", seg.Type)
+	}
+}
+
+// Tag API tests
+
+func TestListTags(t *testing.T) {
+	client := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/console/v1/tags" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("tags") != "" {
+			t.Error("tags query param should not be sent")
+		}
+		w.Write(listJSON([]Tag{{ID: "t1", Name: "mobile", IsCore: true}}, 1))
+	})
+
+	tags, pag, err := client.ListTags(context.Background(), 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 1 {
+		t.Errorf("got %d tags", len(tags))
+	}
+	if tags[0].Name != "mobile" {
+		t.Errorf("name = %q", tags[0].Name)
+	}
+	if !tags[0].IsCore {
+		t.Error("isCore should be true")
+	}
+	if pag.TotalItems != 1 {
+		t.Errorf("totalItems = %d", pag.TotalItems)
+	}
+}
+
+func TestGetTag(t *testing.T) {
+	client := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/console/v1/tags/tag-123" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		w.Write(entityJSON(Tag{ID: "tag-123", Name: "mobile"}))
+	})
+
+	tag, err := client.GetTag(context.Background(), "tag-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag.Name != "mobile" {
+		t.Errorf("name = %q", tag.Name)
+	}
+}
+
+func TestCreateTag(t *testing.T) {
+	client := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("method = %s", r.Method)
+		}
+		var body map[string]any
+		json.NewDecoder(r.Body).Decode(&body)
+		if body["name"] != "mobile" {
+			t.Errorf("name = %v", body["name"])
+		}
+		if body["isCore"] != true {
+			t.Errorf("isCore = %v", body["isCore"])
+		}
+		w.Write(entityJSON(Tag{ID: "t1", Name: "mobile", IsCore: true}))
+	})
+
+	tag, err := client.CreateTag(context.Background(), "mobile", "Mobile features", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag.Name != "mobile" {
+		t.Errorf("name = %q", tag.Name)
+	}
+}
+
+func TestUpdateTag(t *testing.T) {
+	client := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("method = %s", r.Method)
+		}
+		w.Write(entityJSON(Tag{ID: "t1", Name: "renamed"}))
+	})
+
+	tag, err := client.UpdateTag(context.Background(), "t1", map[string]any{"name": "renamed"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag.Name != "renamed" {
+		t.Errorf("name = %q", tag.Name)
+	}
+}
+
+func TestDeleteTag(t *testing.T) {
+	client := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("method = %s", r.Method)
+		}
+		w.Write([]byte(`{"message":"ok"}`))
+	})
+
+	if err := client.DeleteTag(context.Background(), "t1"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCreateGateWithTags(t *testing.T) {
+	client := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		json.NewDecoder(r.Body).Decode(&body)
+		tags := body["tags"].([]any)
+		if len(tags) != 2 || tags[0] != "mobile" || tags[1] != "ios" {
+			t.Errorf("tags = %v", tags)
+		}
+		w.Write(entityJSON(Gate{Name: "my_gate", Tags: []string{"mobile", "ios"}}))
+	})
+
+	gate, err := client.CreateGate(context.Background(), "my_gate", "", []string{"mobile", "ios"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(gate.Tags) != 2 {
+		t.Errorf("got %d tags", len(gate.Tags))
 	}
 }
 

@@ -99,6 +99,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 
 func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var description string
+	var tags []string
 
 	cmd := &cobra.Command{
 		Use:   "create <name>",
@@ -107,7 +108,10 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
-				gate, err := client.CreateGate(ctx, args[0], description)
+				if err := shared.ValidateTags(ctx, client, tags); err != nil {
+					return err
+				}
+				gate, err := client.CreateGate(ctx, args[0], description, tags)
 				if err != nil {
 					return err
 				}
@@ -117,6 +121,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		},
 	}
 	cmd.Flags().StringVar(&description, "description", "", "Gate description")
+	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable: --tag core --tag mobile)")
 	parent.AddCommand(cmd)
 }
 
@@ -216,6 +221,8 @@ func registerLaunch(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
+	var tags []string
+
 	cmd := &cobra.Command{
 		Use:   "update <name> <json>",
 		Short: "Update a gate with raw JSON (partial update)",
@@ -227,6 +234,12 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
+				if cmd.Flags().Changed("tag") {
+					if err := shared.ValidateTags(ctx, client, tags); err != nil {
+						return err
+					}
+					update["tags"] = tags
+				}
 				gate, err := client.UpdateGate(ctx, args[0], update)
 				if err != nil {
 					return err
@@ -236,6 +249,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 			})
 		},
 	}
+	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable, replaces existing tags)")
 	parent.AddCommand(cmd)
 }
 

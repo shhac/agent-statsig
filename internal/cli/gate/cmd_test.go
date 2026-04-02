@@ -310,6 +310,42 @@ func TestGateListWithSearch(t *testing.T) {
 	}
 }
 
+func TestGateCreateWithValidTag(t *testing.T) {
+	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/console/v1/tags" {
+			w.Write(listJSON([]api.Tag{{Name: "mobile"}}, 1))
+			return
+		}
+		var body map[string]any
+		json.NewDecoder(r.Body).Decode(&body)
+		tags := body["tags"].([]any)
+		if len(tags) != 1 || tags[0] != "mobile" {
+			t.Errorf("tags = %v", tags)
+		}
+		w.Write(entityJSON(api.Gate{Name: "my_gate", Tags: []string{"mobile"}}))
+	}, "gate", "create", "my_gate", "--tag", "mobile")
+
+	if out == "" {
+		t.Error("expected output")
+	}
+}
+
+func TestGateCreateWithInvalidTag(t *testing.T) {
+	_, stderr := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/console/v1/tags" {
+			w.Write(listJSON([]api.Tag{{Name: "existing"}}, 1))
+			return
+		}
+		t.Error("should not reach gate create endpoint")
+	}, "gate", "create", "my_gate", "--tag", "nonexistent")
+
+	var parsed map[string]any
+	json.Unmarshal([]byte(stderr), &parsed)
+	if parsed["fixable_by"] != "agent" {
+		t.Errorf("fixable_by = %v", parsed["fixable_by"])
+	}
+}
+
 func TestGateArchive(t *testing.T) {
 	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/console/v1/gates/old_gate/archive" {

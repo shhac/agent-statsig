@@ -32,7 +32,7 @@ READ
   gate criteria                      List all 25 condition types + valid operators
 
 MODIFY
-  gate create <name> [--description <text>]
+  gate create <name> [--description <text>] [--tag <tag>...]
   gate delete <name>
   gate enable <name>                 Turn gate on (rules start evaluating)
   gate disable <name>                Turn gate off (all users fail)

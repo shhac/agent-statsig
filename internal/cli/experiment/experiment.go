@@ -94,6 +94,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 
 func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var description, groupsJSON string
+	var tags []string
 
 	cmd := &cobra.Command{
 		Use:   "create <name>",
@@ -102,6 +103,9 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+				if err := shared.ValidateTags(ctx, client, tags); err != nil {
+					return err
+				}
 				var groups []api.Group
 				if groupsJSON != "" {
 					if err := json.Unmarshal([]byte(groupsJSON), &groups); err != nil {
@@ -109,7 +113,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 							WithHint(`Expected: [{"name":"control","size":50},{"name":"test","size":50}]`)
 					}
 				}
-				exp, err := client.CreateExperiment(ctx, args[0], description, groups)
+				exp, err := client.CreateExperiment(ctx, args[0], description, groups, tags)
 				if err != nil {
 					return err
 				}
@@ -120,6 +124,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	}
 	cmd.Flags().StringVar(&description, "description", "", "Experiment description")
 	cmd.Flags().StringVar(&groupsJSON, "groups", "", "Groups JSON array")
+	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable: --tag core --tag mobile)")
 	parent.AddCommand(cmd)
 }
 
@@ -162,6 +167,8 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 }
 
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
+	var tags []string
+
 	cmd := &cobra.Command{
 		Use:   "update <name> <json>",
 		Short: "Update an experiment with raw JSON (partial update)",
@@ -173,6 +180,12 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
+				if cmd.Flags().Changed("tag") {
+					if err := shared.ValidateTags(ctx, client, tags); err != nil {
+						return err
+					}
+					update["tags"] = tags
+				}
 				exp, err := client.UpdateExperiment(ctx, args[0], update)
 				if err != nil {
 					return err
@@ -182,6 +195,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 			})
 		},
 	}
+	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable, replaces existing tags)")
 	parent.AddCommand(cmd)
 }
 

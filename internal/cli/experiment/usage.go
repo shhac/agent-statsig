@@ -30,7 +30,7 @@ READ
   experiment get <name>              Full experiment with groups, status, hypothesis
 
 MODIFY
-  experiment create <name> [--description <text>] [--groups <json>]
+  experiment create <name> [--description <text>] [--groups <json>] [--tag <tag>...]
   experiment delete <name>
   experiment archive <name>
   experiment update <name> <json>    Raw JSON partial update

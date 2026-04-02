@@ -25,13 +25,16 @@ func (c *Client) GetExperiment(ctx context.Context, id string) (*Experiment, err
 	return getAndDecode[Experiment](c, ctx, fmt.Sprintf("%s/%s", experimentsPath, id))
 }
 
-func (c *Client) CreateExperiment(ctx context.Context, name, description string, groups []Group) (*Experiment, error) {
+func (c *Client) CreateExperiment(ctx context.Context, name, description string, groups []Group, tags []string) (*Experiment, error) {
 	body := map[string]any{"name": name}
 	if description != "" {
 		body["description"] = description
 	}
 	if len(groups) > 0 {
 		body["groups"] = groups
+	}
+	if len(tags) > 0 {
+		body["tags"] = tags
 	}
 	return doAndDecode[Experiment](c, ctx, http.MethodPost, experimentsPath, body)
 }

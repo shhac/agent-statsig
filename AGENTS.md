@@ -1,6 +1,6 @@
 # agent-statsig
 
-Statsig feature flag CLI for AI agents. Wraps the Statsig Console API (v1, base URL `https://statsigapi.net`).
+Statsig feature flag CLI for AI agents. Wraps the Statsig Console API (v1, base URL `https://statsigapi.net`). Manages gates, dynamic configs, experiments, segments, and tags.
 
 ## Project Structure
 
@@ -9,7 +9,8 @@ cmd/agent-statsig/main.go     Entry point (version stamped via ldflags)
 internal/
   api/                         Statsig Console API HTTP client
     client.go                  Base client (BaseURL field for testability), doAndDecode[T] generic
-    types.go                   Shared types: Gate, DynamicConfig, Experiment, Segment, Rule, Condition
+    types.go                   Shared types: Gate, DynamicConfig, Experiment, Segment, Tag, Rule, Condition
+    tags.go                    Tag endpoints
     gates.go                   Gate endpoints
     configs.go                 Dynamic config endpoints
     experiments.go             Experiment endpoints (incl. lifecycle: start/reset/abandon/ship)
@@ -36,6 +37,9 @@ internal/
       usage.go                 Per-entity reference card
     segment/
       segment.go               Segment commands incl. ids get/add/remove
+      usage.go                 Per-entity reference card
+    tag/
+      tag.go                   Tag commands: list, get, create, update, delete
       usage.go                 Per-entity reference card
   config/config.go             App config file I/O (~/.config/agent-statsig/config.json)
   credential/
@@ -100,5 +104,7 @@ Distributed via GitHub releases and Homebrew (`shhac/tap`).
 - Rate limits: ~100 mutations/10s, ~900/15min per project
 - PATCH = partial update, POST to `/{id}` = full replacement
 - Rules: conditions within a rule are AND-ed; rules evaluated top-to-bottom (first match wins)
+- Tags endpoint: `/console/v1/tags` — CRUD for organizational tags applied to entities
+- Tags on entities are validated before create/update to prevent broken state
 - 25 condition types with type-specific operators (see `api/types.go` for full mapping)
 - Condition types are universal across all Statsig projects (not configurable per-project)

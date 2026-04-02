@@ -1,6 +1,6 @@
 ---
 name: agent-statsig
-description: Manage Statsig feature gates, dynamic configs, experiments, and segments
+description: Manage Statsig feature gates, dynamic configs, experiments, segments, and tags
 triggers:
   - statsig
   - feature gate
@@ -9,6 +9,7 @@ triggers:
   - experiment
   - a/b test
   - segment
+  - tag
   - rollout
   - targeting rule
 tools:
@@ -30,6 +31,7 @@ Manage Statsig feature gates, dynamic configs, experiments, and segments via the
 - User asks about experiment status or wants to start/ship/abandon experiments
 - User asks about dynamic config values or wants to modify them
 - User wants to manage segment membership
+- User wants to organize entities with tags
 
 ## Process
 
@@ -38,6 +40,13 @@ Manage Statsig feature gates, dynamic configs, experiments, and segments via the
 1. **Inspect first**: Run `agent-statsig gate get <name>` (or config/experiment/segment get) to understand the current state before making changes
 2. **Check rules**: Run `gate rule list <name>` to see rule IDs before updating/removing rules
 3. **Validate criteria**: Run `gate criteria` if unsure which condition types or operators to use
+
+### Using tags
+
+When creating gates, configs, or experiments, apply appropriate tags if the user's
+intent suggests a category (e.g., "mobile feature" → use `--tag mobile` if such a tag
+exists). Check available tags with `tag list` first. Tags must exist before they can be
+applied — create missing tags with `tag create` first.
 
 ### Making changes
 
@@ -82,6 +91,19 @@ agent-statsig experiment abandon <name> --reason "text"
 # Segment IDs
 agent-statsig segment ids add <name> --id user1 --id user2
 agent-statsig segment ids remove <name> --id user1
+
+# Manage tags
+agent-statsig tag list
+agent-statsig tag create <name> [--description <text>] [--is-core]
+agent-statsig tag get <id>
+agent-statsig tag update <id> [--name <name>] [--description <text>] [--is-core]
+agent-statsig tag delete <id>
+
+# Apply tags when creating/updating entities
+agent-statsig gate create <name> --tag <tag-name>
+agent-statsig config create <name> --tag <tag-name>
+agent-statsig experiment create <name> --tag <tag-name>
+agent-statsig gate update <name> '{}' --tag <tag-name>
 ```
 
 ## Detailed Reference
@@ -92,6 +114,7 @@ agent-statsig gate llm-help
 agent-statsig config llm-help
 agent-statsig experiment llm-help
 agent-statsig segment llm-help
+agent-statsig tag llm-help
 agent-statsig llm-help               # top-level overview
 ```
 

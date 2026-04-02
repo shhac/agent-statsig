@@ -25,10 +25,13 @@ func (c *Client) GetConfig(ctx context.Context, id string) (*DynamicConfig, erro
 	return getAndDecode[DynamicConfig](c, ctx, fmt.Sprintf("%s/%s", configsPath, id))
 }
 
-func (c *Client) CreateConfig(ctx context.Context, name, description string) (*DynamicConfig, error) {
+func (c *Client) CreateConfig(ctx context.Context, name, description string, tags []string) (*DynamicConfig, error) {
 	body := map[string]any{"name": name}
 	if description != "" {
 		body["description"] = description
+	}
+	if len(tags) > 0 {
+		body["tags"] = tags
 	}
 	return doAndDecode[DynamicConfig](c, ctx, http.MethodPost, configsPath, body)
 }

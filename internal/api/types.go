@@ -88,6 +88,14 @@ type Group struct {
 	ParameterValues map[string]any `json:"parameterValues,omitempty"`
 }
 
+// Tag represents a Statsig tag.
+type Tag struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	IsCore      bool   `json:"isCore"`
+}
+
 // ConditionTypes lists all known Statsig condition types.
 var ConditionTypes = []string{
 	"app_version", "browser_name", "browser_version", "country",

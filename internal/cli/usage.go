@@ -30,6 +30,7 @@ QUICK START (read-only — safe to explore)
   config get <name>                  Inspect a config's rules and values
   experiment list                    List all experiments
   segment list                       List all segments
+  tag list                           List all tags
 
 COMMON WORKFLOWS
   To roll out a gate to a percentage:
@@ -47,6 +48,10 @@ COMMON WORKFLOWS
     config get <name>                ← check schema + current rules
     config rule add <name> --name "Rule" --criteria email --value user@co.com --return-value '{"key":"val"}'
 
+  To tag entities for organization:
+    tag create "mobile" --description "Mobile features" --is-core
+    gate create my_gate --tag mobile
+
 GLOBAL FLAGS
   -p, --project <alias>              Project alias (or AGENT_STATSIG_PROJECT env)
   --format json|yaml|jsonl           Output format (default: json)
@@ -57,6 +62,7 @@ PER-ENTITY REFERENCE (run these for detailed help + examples)
   config llm-help                 Dynamic configs reference
   experiment llm-help             Experiments reference
   segment llm-help                Segments reference
+  tag llm-help                    Tags reference
 
 PROJECT MANAGEMENT
   project add <alias> --console-key <key> [--client-key <key>]

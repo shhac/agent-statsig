@@ -12,6 +12,7 @@ import (
 	"github.com/shhac/agent-statsig/internal/cli/project"
 	"github.com/shhac/agent-statsig/internal/cli/segment"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
+	"github.com/shhac/agent-statsig/internal/cli/tag"
 )
 
 var (
@@ -47,6 +48,7 @@ func newRootCmd(version string) *cobra.Command {
 	cliconfig.Register(root, allGlobals)
 	experiment.Register(root, allGlobals)
 	segment.Register(root, allGlobals)
+	tag.Register(root, allGlobals)
 
 	return root
 }

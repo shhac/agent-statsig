@@ -35,7 +35,7 @@ READ
   config rule list <config>          List rules with their IDs
 
 MODIFY
-  config create <name> [--description <text>]
+  config create <name> [--description <text>] [--tag <tag>...]
   config delete <name>
   config enable <name>
   config disable <name>

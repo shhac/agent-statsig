@@ -123,6 +123,34 @@ func FilterBySearch[T any](items []T, search string, getName func(T) string, get
 	return filtered
 }
 
+// ValidateTags checks that all specified tag names exist in the project.
+// Returns a helpful error before any mutation if tags are missing.
+func ValidateTags(ctx context.Context, client *api.Client, tagNames []string) error {
+	if len(tagNames) == 0 {
+		return nil
+	}
+	tags, _, err := client.ListTags(ctx, 0, 0)
+	if err != nil {
+		return err
+	}
+	existing := make(map[string]bool, len(tags))
+	for _, t := range tags {
+		existing[t.Name] = true
+	}
+	var missing []string
+	for _, name := range tagNames {
+		if !existing[name] {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		return agenterrors.Newf(agenterrors.FixableByAgent,
+			"tags not found: %s", strings.Join(missing, ", ")).
+			WithHint("Create missing tags first with 'tag create <name>', or use 'tag list' to see available tags")
+	}
+	return nil
+}
+
 // ParseJSONArg parses a JSON string argument into a map, returning a classified error on failure.
 func ParseJSONArg(raw string) (map[string]any, error) {
 	var result map[string]any
