@@ -1,23 +1,7 @@
 ---
 name: agent-statsig
-description: Manage Statsig feature gates, dynamic configs, experiments, segments, and tags
-triggers:
-  - statsig
-  - feature gate
-  - feature flag
-  - dynamic config
-  - experiment
-  - a/b test
-  - segment
-  - tag
-  - rollout
-  - targeting rule
-tools:
-  allowed:
-    - Bash
-    - Read
-    - Grep
-    - Glob
+description: Manage Statsig feature gates, dynamic configs, experiments, segments, and tags. Use when the user asks about feature flags, A/B tests, rollouts, targeting rules, or any Statsig entity.
+allowed-tools: Bash(agent-statsig *) Read Grep Glob
 ---
 
 # agent-statsig — Statsig Feature Flag CLI
