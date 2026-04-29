@@ -8,7 +8,7 @@ import (
 
 func registerUsageCommand(root *cobra.Command) {
 	usage := &cobra.Command{
-		Use:   "llm-help",
+		Use:   "usage",
 		Short: "Show LLM-optimized reference card",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Print(referenceCard)
@@ -58,11 +58,11 @@ GLOBAL FLAGS
   --timeout <ms>                     Request timeout in milliseconds
 
 PER-ENTITY REFERENCE (run these for detailed help + examples)
-  gate llm-help                   Feature gates reference
-  config llm-help                 Dynamic configs reference
-  experiment llm-help             Experiments reference
-  segment llm-help                Segments reference
-  tag llm-help                    Tags reference
+  gate usage                      Feature gates reference
+  config usage                    Dynamic configs reference
+  experiment usage                Experiments reference
+  segment usage                   Segments reference
+  tag usage                       Tags reference
 
 PROJECT MANAGEMENT
   project add <alias> --console-key <key> [--client-key <key>]

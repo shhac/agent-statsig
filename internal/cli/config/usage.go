@@ -1,24 +1,5 @@
 package config
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-)
-
-func registerUsage(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "llm-help",
-		Short: "Show dynamic configs detailed reference",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(configUsage)
-		},
-	}
-	parent.AddCommand(cmd)
-}
-
 const configUsage = `DYNAMIC CONFIGS — Reference
 
 A dynamic config returns a JSON object whose value varies by targeting rules.

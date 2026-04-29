@@ -21,7 +21,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerCreate(tag, globals)
 	registerUpdate(tag, globals)
 	registerDelete(tag, globals)
-	registerUsage(tag, globals)
+	shared.RegisterUsage(tag, "tag", tagUsage)
 
 	root.AddCommand(tag)
 }

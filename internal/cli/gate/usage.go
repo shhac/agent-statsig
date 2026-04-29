@@ -1,24 +1,5 @@
 package gate
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-)
-
-func registerUsage(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "llm-help",
-		Short: "Show feature gates detailed reference",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(gateUsage)
-		},
-	}
-	parent.AddCommand(cmd)
-}
-
 const gateUsage = `FEATURE GATES — Reference
 
 A feature gate is a boolean flag that controls whether a feature is on or off.

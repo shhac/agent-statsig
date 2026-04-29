@@ -1,24 +1,5 @@
 package experiment
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-)
-
-func registerUsage(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "llm-help",
-		Short: "Show experiments detailed reference",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(experimentUsage)
-		},
-	}
-	parent.AddCommand(cmd)
-}
-
 const experimentUsage = `EXPERIMENTS — Reference
 
 An experiment is an A/B test with groups (variants). Each group has a name,

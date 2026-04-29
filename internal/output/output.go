@@ -11,8 +11,8 @@ import (
 type Format string
 
 const (
-	FormatJSON  Format = "json"
-	FormatYAML  Format = "yaml"
+	FormatJSON   Format = "json"
+	FormatYAML   Format = "yaml"
 	FormatNDJSON Format = "jsonl"
 )
 

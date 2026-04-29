@@ -110,12 +110,12 @@ agent-statsig gate update <name> '{}' --tag <tag-name>
 
 For full command details with examples, run per-entity usage:
 ```bash
-agent-statsig gate llm-help
-agent-statsig config llm-help
-agent-statsig experiment llm-help
-agent-statsig segment llm-help
-agent-statsig tag llm-help
-agent-statsig llm-help               # top-level overview
+agent-statsig gate usage
+agent-statsig config usage
+agent-statsig experiment usage
+agent-statsig segment usage
+agent-statsig tag usage
+agent-statsig usage                  # top-level overview
 ```
 
 ## Key Concepts

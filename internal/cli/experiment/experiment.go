@@ -29,7 +29,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerReset(exp, globals)
 	registerAbandon(exp, globals)
 	registerShip(exp, globals)
-	registerUsage(exp, globals)
+	shared.RegisterUsage(exp, "experiment", experimentUsage)
 
 	root.AddCommand(exp)
 }

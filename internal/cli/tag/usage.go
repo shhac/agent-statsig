@@ -1,24 +1,5 @@
 package tag
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-)
-
-func registerUsage(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "llm-help",
-		Short: "Show tags detailed reference",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(tagUsage)
-		},
-	}
-	parent.AddCommand(cmd)
-}
-
 const tagUsage = `TAGS — Reference
 
 Tags are labels that organize gates, configs, experiments, and segments.

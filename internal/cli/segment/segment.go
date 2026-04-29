@@ -23,7 +23,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerDelete(seg, globals)
 	registerArchive(seg, globals)
 	registerIDs(seg, globals)
-	registerUsage(seg, globals)
+	shared.RegisterUsage(seg, "segment", segmentUsage)
 
 	root.AddCommand(seg)
 }

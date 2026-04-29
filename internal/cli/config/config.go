@@ -26,7 +26,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerArchive(cfg, globals)
 	registerUpdate(cfg, globals)
 	registerRule(cfg, globals)
-	registerUsage(cfg, globals)
+	shared.RegisterUsage(cfg, "config", configUsage)
 
 	root.AddCommand(cfg)
 }

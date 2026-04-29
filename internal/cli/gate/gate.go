@@ -34,7 +34,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerCheck(gate, globals)
 	registerCriteria(gate)
 	registerRule(gate, globals)
-	registerUsage(gate, globals)
+	shared.RegisterUsage(gate, "gate", gateUsage)
 
 	root.AddCommand(gate)
 }

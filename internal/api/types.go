@@ -19,18 +19,18 @@ type Gate struct {
 
 // DynamicConfig represents a Statsig dynamic config.
 type DynamicConfig struct {
-	ID            string          `json:"id"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description,omitempty"`
-	IsEnabled     bool            `json:"isEnabled"`
-	Tags          []string        `json:"tags,omitempty"`
-	Rules         []Rule          `json:"rules,omitempty"`
-	DefaultValue  json.RawMessage `json:"defaultValue,omitempty"`
-	Schema        json.RawMessage `json:"schema,omitempty"`
-	Salt          string          `json:"salt,omitempty"`
-	Status        string          `json:"status,omitempty"`
-	Type          string          `json:"type,omitempty"`
-	CreatorID     string          `json:"creatorID,omitempty"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description,omitempty"`
+	IsEnabled    bool            `json:"isEnabled"`
+	Tags         []string        `json:"tags,omitempty"`
+	Rules        []Rule          `json:"rules,omitempty"`
+	DefaultValue json.RawMessage `json:"defaultValue,omitempty"`
+	Schema       json.RawMessage `json:"schema,omitempty"`
+	Salt         string          `json:"salt,omitempty"`
+	Status       string          `json:"status,omitempty"`
+	Type         string          `json:"type,omitempty"`
+	CreatorID    string          `json:"creatorID,omitempty"`
 }
 
 // Experiment represents a Statsig experiment.
@@ -53,10 +53,10 @@ type Experiment struct {
 
 // Segment represents a Statsig segment.
 type Segment struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Type        string `json:"type,omitempty"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	Type        string   `json:"type,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	Rules       []Rule   `json:"rules,omitempty"`
 	CreatorID   string   `json:"creatorID,omitempty"`
@@ -64,12 +64,12 @@ type Segment struct {
 
 // Rule represents a targeting rule shared by gates, configs, and experiments.
 type Rule struct {
-	ID                string      `json:"id,omitempty"`
-	Name              string      `json:"name"`
-	PassPercentage    float64     `json:"passPercentage"`
-	Conditions        []Condition `json:"conditions"`
-	ReturnValue       any         `json:"returnValue,omitempty"`
-	Environments      []string    `json:"environments,omitempty"`
+	ID             string      `json:"id,omitempty"`
+	Name           string      `json:"name"`
+	PassPercentage float64     `json:"passPercentage"`
+	Conditions     []Condition `json:"conditions"`
+	ReturnValue    any         `json:"returnValue,omitempty"`
+	Environments   []string    `json:"environments,omitempty"`
 }
 
 // Condition represents a single condition within a rule.

@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	DefaultProject string              `json:"default_project,omitempty"`
-	Projects       map[string]Project  `json:"projects"`
-	Settings       Settings            `json:"settings"`
+	DefaultProject string             `json:"default_project,omitempty"`
+	Projects       map[string]Project `json:"projects"`
+	Settings       Settings           `json:"settings"`
 }
 
 type Project struct {
@@ -27,8 +27,8 @@ type DefaultsSettings struct {
 }
 
 var (
-	cache      *Config
-	cacheMu    sync.Mutex
+	cache       *Config
+	cacheMu     sync.Mutex
 	overrideDir string
 )
 

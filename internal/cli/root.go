@@ -31,9 +31,9 @@ func allGlobals() *shared.GlobalFlags {
 
 func newRootCmd(version string) *cobra.Command {
 	root := &cobra.Command{
-		Use:     "agent-statsig",
-		Short:   "Statsig feature flag CLI for AI agents",
-		Version: version,
+		Use:           "agent-statsig",
+		Short:         "Statsig feature flag CLI for AI agents",
+		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

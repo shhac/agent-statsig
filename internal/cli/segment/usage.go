@@ -1,24 +1,5 @@
 package segment
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-)
-
-func registerUsage(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "llm-help",
-		Short: "Show segments detailed reference",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(segmentUsage)
-		},
-	}
-	parent.AddCommand(cmd)
-}
-
 const segmentUsage = `SEGMENTS — Reference
 
 A segment is a reusable group of users. Define targeting once, then reference

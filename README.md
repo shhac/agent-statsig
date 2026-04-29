@@ -92,11 +92,11 @@ agent-statsig experiment start my_experiment
 The CLI has layered documentation for progressive discovery:
 
 ```bash
-agent-statsig llm-help           # Top-level overview + common workflows
-agent-statsig gate llm-help         # Feature gates detailed reference
-agent-statsig config llm-help       # Dynamic configs + schema validation
-agent-statsig experiment llm-help   # Experiments + lifecycle
-agent-statsig segment llm-help      # Segments + ID list management
+agent-statsig usage              # Top-level overview + common workflows
+agent-statsig gate usage            # Feature gates detailed reference
+agent-statsig config usage          # Dynamic configs + schema validation
+agent-statsig experiment usage      # Experiments + lifecycle
+agent-statsig segment usage         # Segments + ID list management
 agent-statsig gate criteria      # List all 25 condition types + operators
 ```
 

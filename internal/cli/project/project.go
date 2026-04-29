@@ -253,4 +253,3 @@ func registerTest(parent *cobra.Command) {
 	}
 	parent.AddCommand(cmd)
 }
-
