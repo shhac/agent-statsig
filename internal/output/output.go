@@ -1,128 +1,89 @@
+// Package output re-exports the shared output contract from lib-agent-output,
+// keeping the internal/output import path while the wire mechanism (format
+// parsing, JSON encoding, error rendering) lives in one place. What stays local
+// is agent-statsig policy: the always-JSON Print signature, the one-arg
+// ResolveFormat that defaults to JSON, and the Statsig-shaped pagination
+// trailer. (Migration shim.)
 package output
 
 import (
-	"encoding/json"
 	"io"
 	"os"
 
-	agenterrors "github.com/shhac/agent-statsig/internal/errors"
+	out "github.com/shhac/lib-agent-output"
 )
 
-type Format string
+// Format and its values come from the shared contract; ParseFormat is therefore
+// the family's lenient parser (accepts "ndjson"/"yml", case-insensitive).
+type Format = out.Format
 
 const (
-	FormatJSON   Format = "json"
-	FormatYAML   Format = "yaml"
-	FormatNDJSON Format = "jsonl"
+	FormatJSON   = out.FormatJSON
+	FormatYAML   = out.FormatYAML
+	FormatNDJSON = out.FormatNDJSON
 )
 
-func ParseFormat(s string) (Format, error) {
-	switch s {
-	case "json":
-		return FormatJSON, nil
-	case "yaml":
-		return FormatYAML, nil
-	case "jsonl", "ndjson":
-		return FormatNDJSON, nil
-	default:
-		return "", agenterrors.Newf(agenterrors.FixableByAgent, "unknown format %q, expected: json, yaml, jsonl", s)
-	}
-}
+// ParseFormat is the shared lenient parser. WriteError renders the structured
+// {error, fixable_by, hint} line via the shared encoder (HTML escaping off).
+var (
+	ParseFormat = out.ParseFormat
+	WriteError  = out.WriteError
+)
 
+// ResolveFormat keeps agent-statsig's one-arg, always-default-JSON behavior:
+// an empty or unparseable flag resolves to JSON rather than surfacing an error.
 func ResolveFormat(flagFormat string) Format {
-	if flagFormat != "" {
-		f, err := ParseFormat(flagFormat)
-		if err != nil {
-			return FormatJSON
-		}
-		return f
+	if flagFormat == "" {
+		return FormatJSON
 	}
-	return FormatJSON
-}
-
-// PrintJSON pretty-prints data to stdout. When prune is true, null values are removed.
-func PrintJSON(data any, prune bool) {
-	b, err := json.Marshal(data)
+	f, err := ParseFormat(flagFormat)
 	if err != nil {
-		return
+		return FormatJSON
 	}
-	if prune {
-		var m any
-		if err := json.Unmarshal(b, &m); err == nil {
-			m = pruneNulls(m)
-			b, _ = json.Marshal(m)
-		}
-	}
-	var indented any
-	if err := json.Unmarshal(b, &indented); err == nil {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		enc.SetEscapeHTML(false)
-		_ = enc.Encode(indented)
-	}
+	return f
 }
 
-// WriteError writes a structured JSON error to the given writer.
-func WriteError(w io.Writer, err error) {
-	var aerr *agenterrors.APIError
-	if !agenterrors.As(err, &aerr) {
-		aerr = agenterrors.Wrap(err, agenterrors.FixableByAgent)
+// PrintJSON pretty-prints data to stdout. When prune is true, null values are
+// removed; when false the data is still round-tripped so raw JSON is re-indented
+// (matching the pre-migration behavior).
+func PrintJSON(data any, prune bool) {
+	pruner := identityPruner
+	if prune {
+		pruner = out.PruneNils
 	}
-	payload := map[string]any{
-		"error":      aerr.Message,
-		"fixable_by": string(aerr.FixableBy),
-	}
-	if aerr.Hint != "" {
-		payload["hint"] = aerr.Hint
-	}
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	_ = enc.Encode(payload)
+	_ = out.Print(os.Stdout, data, FormatJSON, pruner)
 }
+
+// identityPruner forces out.Print's normalize round-trip without dropping any
+// fields, so a json.RawMessage gets decoded and re-indented like the old
+// PrintJSON did.
+func identityPruner(v any) any { return v }
+
+// pruneNulls drops nil map values recursively. It delegates to the shared
+// PruneNils so the prune policy lives in one place.
+func pruneNulls(v any) any { return out.PruneNils(v) }
 
 // NDJSONWriter writes one JSON object per line to the given writer.
 type NDJSONWriter struct {
-	enc *json.Encoder
+	w *out.NDJSONWriter
 }
 
 func NewNDJSONWriter(w io.Writer) *NDJSONWriter {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	return &NDJSONWriter{enc: enc}
+	return &NDJSONWriter{w: out.NewNDJSONWriter(w)}
 }
 
 func (n *NDJSONWriter) WriteItem(item any) error {
-	return n.enc.Encode(item)
+	return n.w.WriteItem(item)
 }
 
 func (n *NDJSONWriter) WritePagination(p *Pagination) error {
-	return n.enc.Encode(map[string]any{"@pagination": p})
+	return n.w.WriteMetaLine("@pagination", p)
 }
 
+// Pagination is Statsig-shaped (page/total counters, not an opaque cursor), so
+// it stays local rather than using out.Pagination.
 type Pagination struct {
 	HasMore    bool `json:"hasMore"`
 	TotalItems int  `json:"totalItems"`
 	Page       int  `json:"page"`
-}
-
-func pruneNulls(v any) any {
-	switch val := v.(type) {
-	case map[string]any:
-		out := make(map[string]any, len(val))
-		for k, v := range val {
-			if v == nil {
-				continue
-			}
-			out[k] = pruneNulls(v)
-		}
-		return out
-	case []any:
-		out := make([]any, len(val))
-		for i, v := range val {
-			out[i] = pruneNulls(v)
-		}
-		return out
-	default:
-		return v
-	}
 }
