@@ -59,10 +59,6 @@ func PrintJSON(data any, prune bool) {
 // PrintJSON did.
 func identityPruner(v any) any { return v }
 
-// pruneNulls drops nil map values recursively. It delegates to the shared
-// PruneNils so the prune policy lives in one place.
-func pruneNulls(v any) any { return out.PruneNils(v) }
-
 // NDJSONWriter writes one JSON object per line to the given writer.
 type NDJSONWriter struct {
 	w *out.NDJSONWriter

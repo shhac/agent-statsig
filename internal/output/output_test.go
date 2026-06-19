@@ -126,25 +126,3 @@ func TestNDJSONWriter(t *testing.T) {
 		t.Error("pagination hasMore should be true")
 	}
 }
-
-func TestPruneNulls(t *testing.T) {
-	input := map[string]any{
-		"name":  "test",
-		"value": nil,
-		"nested": map[string]any{
-			"a": 1,
-			"b": nil,
-		},
-	}
-	result := pruneNulls(input).(map[string]any)
-	if _, ok := result["value"]; ok {
-		t.Error("null value should be pruned")
-	}
-	nested := result["nested"].(map[string]any)
-	if _, ok := nested["b"]; ok {
-		t.Error("nested null should be pruned")
-	}
-	if nested["a"] != 1 {
-		t.Errorf("nested.a = %v", nested["a"])
-	}
-}
