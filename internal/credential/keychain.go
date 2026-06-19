@@ -2,18 +2,21 @@ package credential
 
 import (
 	"encoding/json"
-	"fmt"
-	"os/exec"
-	"runtime"
+	"errors"
+
+	"github.com/shhac/lib-agent-cli/creds"
 )
 
+// keychainService is owned by this CLI: the lib must not know the reverse-domain prefix.
 const keychainService = "app.paulie.agent-statsig"
+
+var keychain = creds.NewKeychain(keychainService)
 
 // keychainStore saves credentials to the macOS Keychain.
 // Returns nil on success, non-nil if not on macOS or keychain operation fails.
 func keychainStore(name, consoleKey, clientKey string) error {
-	if runtime.GOOS != "darwin" {
-		return fmt.Errorf("keychain not available")
+	if !keychain.Available() {
+		return creds.ErrKeychainUnavailable
 	}
 
 	data, _ := json.Marshal(map[string]string{
@@ -21,30 +24,22 @@ func keychainStore(name, consoleKey, clientKey string) error {
 		"client_key":  clientKey,
 	})
 
-	// Delete existing entry if present (ignore errors).
-	_ = exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
-
-	return exec.Command("security", "add-generic-password",
-		"-s", keychainService, "-a", name, "-w", string(data),
-		"-U",
-	).Run()
+	return keychain.Set(name, string(data))
 }
 
 // keychainGet retrieves credentials from the macOS Keychain.
 func keychainGet(name string) (consoleKey, clientKey string, err error) {
-	if runtime.GOOS != "darwin" {
-		return "", "", fmt.Errorf("keychain not available")
+	if !keychain.Available() {
+		return "", "", creds.ErrKeychainUnavailable
 	}
 
-	out, err := exec.Command("security", "find-generic-password",
-		"-s", keychainService, "-a", name, "-w",
-	).Output()
-	if err != nil {
-		return "", "", err
+	value, ok := keychain.Get(name)
+	if !ok {
+		return "", "", errors.New("keychain entry not found")
 	}
 
 	var keys map[string]string
-	if err := json.Unmarshal(out, &keys); err != nil {
+	if err := json.Unmarshal([]byte(value), &keys); err != nil {
 		return "", "", err
 	}
 	return keys["console_key"], keys["client_key"], nil
@@ -52,8 +47,8 @@ func keychainGet(name string) (consoleKey, clientKey string, err error) {
 
 // keychainDelete removes credentials from the macOS Keychain.
 func keychainDelete(name string) {
-	if runtime.GOOS != "darwin" {
+	if !keychain.Available() {
 		return
 	}
-	_ = exec.Command("security", "delete-generic-password", "-s", keychainService, "-a", name).Run()
+	_ = keychain.Delete(name)
 }
