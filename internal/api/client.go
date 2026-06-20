@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
 )
@@ -22,6 +23,10 @@ type Client struct {
 	consoleKey string
 	clientKey  string
 	http       *http.Client
+
+	// Debug, when set, logs one line per request (method + URL) to stderr.
+	// Wired from the global --debug flag.
+	Debug bool
 }
 
 func NewClient(consoleKey, clientKey string) *Client {
@@ -62,6 +67,10 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 	req, err := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
 	if err != nil {
 		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
+	}
+
+	if c.Debug {
+		fmt.Fprintf(os.Stderr, "[debug] %s %s\n", method, reqURL)
 	}
 
 	req.Header.Set("STATSIG-API-KEY", c.consoleKey)

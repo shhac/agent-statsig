@@ -84,6 +84,14 @@ func NewClientFromProject(projectAlias string) (*api.Client, error) {
 var ClientFactory func() (*api.Client, error)
 
 func WithClient(projectAlias string, timeout int, fn func(ctx context.Context, client *api.Client) error) error {
+	return withClient(projectAlias, timeout, false, fn)
+}
+
+func WithClientDebug(projectAlias string, timeout int, debug bool, fn func(ctx context.Context, client *api.Client) error) error {
+	return withClient(projectAlias, timeout, debug, fn)
+}
+
+func withClient(projectAlias string, timeout int, debug bool, fn func(ctx context.Context, client *api.Client) error) error {
 	ctx, cancel := MakeContext(timeout)
 	defer cancel()
 
@@ -97,8 +105,21 @@ func WithClient(projectAlias string, timeout int, fn func(ctx context.Context, c
 	if err != nil {
 		return err
 	}
+	client.Debug = debug
 
 	return fn(ctx, client)
+}
+
+// GetEntities runs the family's multi-capable get: sets up one client then
+// resolves each id through getOne and streams per the shared get contract
+// (NDJSON by default; item-level misses become @unresolved records on stdout;
+// command-level failures bubble to the caller).
+func GetEntities(g *GlobalFlags, args []string, getOne func(ctx context.Context, client *api.Client, id string) (any, error)) error {
+	return WithClientDebug(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
+		return libcli.EntityGet(os.Stdout, g.Format, args, func(id string) (any, error) {
+			return getOne(ctx, client, id)
+		})
+	})
 }
 
 // ToAnySlice converts a typed slice to []any.

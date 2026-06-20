@@ -73,18 +73,12 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 
 func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd := &cobra.Command{
-		Use:   "get <name>",
-		Short: "Get dynamic config details",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <name>...",
+		Short: "Get dynamic config details (one or more names)",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
-				cfg, err := client.GetConfig(ctx, args[0])
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(cfg, g.Format)
-				return nil
+			return shared.GetEntities(globals(), args, func(ctx context.Context, client *api.Client, id string) (any, error) {
+				return client.GetConfig(ctx, id)
 			})
 		},
 	}

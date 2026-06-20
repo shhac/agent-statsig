@@ -81,18 +81,12 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 
 func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	cmd := &cobra.Command{
-		Use:   "get <name>",
-		Short: "Get feature gate details",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <name>...",
+		Short: "Get feature gate details (one or more names)",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
-				gate, err := client.GetGate(ctx, args[0])
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(gate, g.Format)
-				return nil
+			return shared.GetEntities(globals(), args, func(ctx context.Context, client *api.Client, id string) (any, error) {
+				return client.GetGate(ctx, id)
 			})
 		},
 	}
