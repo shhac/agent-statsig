@@ -7,12 +7,15 @@
 package output
 
 import (
-	"bytes"
 	"io"
 	"os"
 
 	out "github.com/shhac/lib-agent-output"
-	"gopkg.in/yaml.v3"
+
+	// Registers the canonical YAML encoder (2-space indent, whole-float-to-int
+	// normalization) with lib-agent-output for its side effect, so this CLI gets
+	// `--format yaml` without carrying a local encoder.
+	_ "github.com/shhac/lib-agent-cli/yaml"
 )
 
 // Format and its values come from the shared contract; ParseFormat is therefore
@@ -32,22 +35,6 @@ var (
 	WriteError  = out.WriteError
 )
 
-// init registers agent-statsig's YAML encoder with lib-agent-output, so YAML
-// support (and its yaml.v3 dependency) stays in this CLI while the core library
-// remains dependency-free.
-func init() {
-	out.RegisterEncoder(out.FormatYAML, func(v any) ([]byte, error) {
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		if err := enc.Encode(v); err != nil {
-			return nil, err
-		}
-		_ = enc.Close()
-		return buf.Bytes(), nil
-	})
-}
-
 // ResolveFormat keeps agent-statsig's one-arg, always-default-JSON behavior:
 // an empty or unparseable flag resolves to JSON rather than surfacing an error.
 func ResolveFormat(flagFormat string) Format {
@@ -65,7 +52,8 @@ func ResolveFormat(flagFormat string) Format {
 // values are removed; when false the data is still round-tripped (via
 // identityPruner) so raw JSON is decoded — re-indented for JSON, and rendered as
 // real YAML mappings rather than a quoted blob for YAML. NDJSON streams a single
-// line. YAML is delegated to the encoder registered in init.
+// line. YAML is delegated to the encoder registered by the blank-imported
+// lib-agent-cli/yaml package.
 func Print(data any, format Format, prune bool) {
 	pruner := identityPruner
 	if prune {

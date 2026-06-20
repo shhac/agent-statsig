@@ -8,7 +8,6 @@ import (
 
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
 	out "github.com/shhac/lib-agent-output"
-	"gopkg.in/yaml.v3"
 )
 
 func TestParseFormat(t *testing.T) {
@@ -42,11 +41,11 @@ func TestParseFormat(t *testing.T) {
 	}
 }
 
-// TestYAMLEncoderRegistered pins that `--format yaml` actually works: init
-// registers a YAML encoder with lib-agent-output, so out.Print(FormatYAML)
-// emits valid, 2-space-indented YAML rather than erroring on an unregistered
-// format. Exercising out.Print directly (writer-injectable) hits the same
-// encoder the CLI's Print routes through.
+// TestYAMLEncoderRegistered pins that `--format yaml` actually works: the
+// blank-imported lib-agent-cli/yaml package registers a YAML encoder with
+// lib-agent-output, so out.Print(FormatYAML) emits valid, 2-space-indented YAML
+// rather than erroring on an unregistered format. Exercising out.Print directly
+// (writer-injectable) hits the same encoder the CLI's Print routes through.
 func TestYAMLEncoderRegistered(t *testing.T) {
 	var buf bytes.Buffer
 	data := map[string]any{"name": "gate", "isEnabled": true}
@@ -58,13 +57,26 @@ func TestYAMLEncoderRegistered(t *testing.T) {
 	if !strings.Contains(got, "name: gate") || !strings.Contains(got, "isEnabled: true") {
 		t.Errorf("YAML output missing expected fields:\n%s", got)
 	}
+}
 
-	var decoded map[string]any
-	if err := yaml.Unmarshal(buf.Bytes(), &decoded); err != nil {
-		t.Fatalf("output is not valid YAML: %v\n%s", err, got)
+// TestYAMLNormalizesWholeNumbers pins the latent-bug fix the shared encoder
+// brings: JSON decoding produces float64 for every number, and yaml.v3 renders
+// large whole floats in scientific notation (e.g. "1.5e+06"). The shared
+// encoder normalizes whole-valued floats to integers, so a large id/count
+// renders as a plain integer.
+func TestYAMLNormalizesWholeNumbers(t *testing.T) {
+	var buf bytes.Buffer
+	data := map[string]any{"count": float64(1500000)}
+	if err := out.Print(&buf, data, FormatYAML, nil); err != nil {
+		t.Fatalf("out.Print(FormatYAML) error: %v", err)
 	}
-	if decoded["name"] != "gate" || decoded["isEnabled"] != true {
-		t.Errorf("round-tripped YAML = %v, want name=gate isEnabled=true", decoded)
+
+	got := buf.String()
+	if !strings.Contains(got, "count: 1500000") {
+		t.Errorf("whole-number not normalized to integer:\n%s", got)
+	}
+	if strings.Contains(got, "e+") {
+		t.Errorf("YAML used scientific notation for a whole number:\n%s", got)
 	}
 }
 
