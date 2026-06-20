@@ -1,9 +1,9 @@
 package cli
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
+
+	libcli "github.com/shhac/lib-agent-cli/cli"
 
 	cliconfig "github.com/shhac/agent-statsig/internal/cli/config"
 	"github.com/shhac/agent-statsig/internal/cli/experiment"
@@ -15,53 +15,37 @@ import (
 	"github.com/shhac/agent-statsig/internal/output"
 )
 
-var (
-	flagProject string
-	flagFormat  string
-	flagTimeout int
-)
-
-func allGlobals() *shared.GlobalFlags {
-	return &shared.GlobalFlags{
-		Project: flagProject,
-		Format:  flagFormat,
-		Timeout: flagTimeout,
-	}
-}
-
 func newRootCmd(version string) *cobra.Command {
-	root := &cobra.Command{
+	g := &shared.GlobalFlags{}
+
+	root := libcli.NewRoot(libcli.Options{
 		Use:           "agent-statsig",
 		Short:         "Statsig feature flag CLI for AI agents",
 		Version:       version,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
+		Globals:       &g.Globals,
+		DefaultFormat: output.FormatJSON,
+		UnknownHint:   "run 'agent-statsig usage' to see the available commands",
+	})
 
-	root.PersistentFlags().StringVarP(&flagProject, "project", "p", "", "Project alias (or set AGENT_STATSIG_PROJECT)")
-	root.PersistentFlags().StringVarP(&flagFormat, "format", "f", "", "Output format: json, yaml, jsonl")
-	root.PersistentFlags().IntVarP(&flagTimeout, "timeout", "t", 0, "Request timeout in milliseconds")
+	root.PersistentFlags().StringVarP(&g.Project, "project", "p", "", "Project alias (or set AGENT_STATSIG_PROJECT)")
+
+	globals := func() *shared.GlobalFlags { return g }
 
 	registerUsageCommand(root)
 	project.Register(root)
-	gate.Register(root, allGlobals)
-	cliconfig.Register(root, allGlobals)
-	experiment.Register(root, allGlobals)
-	segment.Register(root, allGlobals)
-	tag.Register(root, allGlobals)
+	gate.Register(root, globals)
+	cliconfig.Register(root, globals)
+	experiment.Register(root, globals)
+	segment.Register(root, globals)
+	tag.Register(root, globals)
 
 	return root
 }
 
-func Execute(version string) error {
-	err := newRootCmd(version).Execute()
-	if err != nil {
-		// SilenceErrors keeps cobra from printing; render the structured
-		// {error, fixable_by, hint} line ourselves so no error reaches the
-		// user as plain text. Command RunE bodies pre-render their own errors
-		// via WriteError and return nil, so this only fires for cobra-level
-		// errors (unknown command/flag, bad arg count) and prints exactly once.
-		output.WriteError(os.Stderr, err)
-	}
-	return err
+// Execute builds the root command and runs it via libcli.Run, which renders any
+// bubbled error in the structured contract and exits 0/1. Command RunE bodies
+// pre-render their own errors via output.WriteError and return nil, so Run only
+// fires for cobra-level errors (unknown command/flag, bad arg count).
+func Execute(version string) {
+	libcli.Run(newRootCmd(version))
 }

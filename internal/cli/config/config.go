@@ -39,7 +39,7 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Short: "List dynamic configs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				var tags []string
 				if tag != "" {
 					tags = strings.Split(tag, ",")
@@ -75,7 +75,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				cfg, err := client.GetConfig(ctx, args[0])
 				if err != nil {
 					return err
@@ -98,7 +98,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := shared.ValidateTags(ctx, client, tags); err != nil {
 					return err
 				}
@@ -123,7 +123,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.DeleteConfig(ctx, args[0]); err != nil {
 					return err
 				}
@@ -142,7 +142,7 @@ func registerEnable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.EnableConfig(ctx, args[0]); err != nil {
 					return err
 				}
@@ -161,7 +161,7 @@ func registerDisable(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.DisableConfig(ctx, args[0]); err != nil {
 					return err
 				}
@@ -180,7 +180,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.ArchiveConfig(ctx, args[0]); err != nil {
 					return err
 				}
@@ -201,7 +201,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				update, err := shared.ParseJSONArg(args[1])
 				if err != nil {
 					return err

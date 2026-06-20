@@ -37,7 +37,7 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Short: "List segments",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				var tags []string
 				if tag != "" {
 					tags = strings.Split(tag, ",")
@@ -73,7 +73,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				seg, err := client.GetSegment(ctx, args[0])
 				if err != nil {
 					return err
@@ -95,7 +95,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				seg, err := client.CreateSegment(ctx, args[0], description, segType)
 				if err != nil {
 					return err
@@ -117,7 +117,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.DeleteSegment(ctx, args[0]); err != nil {
 					return err
 				}
@@ -136,7 +136,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.ArchiveSegment(ctx, args[0]); err != nil {
 					return err
 				}
@@ -168,7 +168,7 @@ func registerIDsGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				raw, err := client.GetSegmentIDs(ctx, args[0])
 				if err != nil {
 					return err
@@ -190,7 +190,7 @@ func registerIDsAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.AddSegmentIDs(ctx, args[0], ids); err != nil {
 					return err
 				}
@@ -213,7 +213,7 @@ func registerIDsRemove(parent *cobra.Command, globals func() *shared.GlobalFlags
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.RemoveSegmentIDs(ctx, args[0], ids); err != nil {
 					return err
 				}

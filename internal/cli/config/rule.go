@@ -33,7 +33,7 @@ func registerRuleList(parent *cobra.Command, globals func() *shared.GlobalFlags)
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				rules, err := client.GetConfigRules(ctx, args[0])
 				if err != nil {
 					return err
@@ -64,7 +64,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := shared.ValidateCriteria(criteria, operator); err != nil {
 					return err
 				}
@@ -144,7 +144,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				update := make(map[string]any)
 				if setPercent {
 					update["passPercentage"] = passPercent
@@ -187,7 +187,7 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.Timeout, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
 				if err := client.DeleteConfigRule(ctx, args[0], ruleID); err != nil {
 					return err
 				}
