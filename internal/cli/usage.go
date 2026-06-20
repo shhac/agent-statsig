@@ -54,8 +54,8 @@ COMMON WORKFLOWS
 
 GLOBAL FLAGS
   -p, --project <alias>              Project alias (or AGENT_STATSIG_PROJECT env)
-  --format json|yaml|jsonl           Output format (default: json)
-  --timeout <ms>                     Request timeout in milliseconds
+  -f, --format json|yaml|jsonl       Output format (default: json)
+  -t, --timeout <ms>                 Request timeout in milliseconds
 
 PER-ENTITY REFERENCE (run these for detailed help + examples)
   gate usage                      Feature gates reference

@@ -1,10 +1,10 @@
 # agent-statsig
 
-Statsig feature flag CLI for AI agents. Manage gates, dynamic configs, experiments, and segments from the command line with structured JSON output optimized for LLM consumption.
+Statsig feature flag CLI for AI agents. Manage gates, dynamic configs, experiments, segments, and tags from the command line with structured JSON output optimized for LLM consumption.
 
 ## Features
 
-- **Four entity types**: feature gates, dynamic configs, experiments, segments
+- **Five entity types**: feature gates, dynamic configs, experiments, segments, tags
 - **Full CRUD + lifecycle**: create, read, update, delete, enable/disable, archive, and entity-specific operations (rollout, start/ship experiments, manage segment IDs)
 - **Rule manipulation**: add, update, and remove targeting rules with criteria validation
 - **JSON Schema validation**: dynamic config return values validated client-side against the config's schema
@@ -97,6 +97,7 @@ agent-statsig gate usage            # Feature gates detailed reference
 agent-statsig config usage          # Dynamic configs + schema validation
 agent-statsig experiment usage      # Experiments + lifecycle
 agent-statsig segment usage         # Segments + ID list management
+agent-statsig tag usage             # Tags reference
 agent-statsig gate criteria      # List all 25 condition types + operators
 ```
 
