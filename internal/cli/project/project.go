@@ -3,10 +3,11 @@ package project
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	libcli "github.com/shhac/lib-agent-cli/cli"
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
@@ -28,6 +29,7 @@ func Register(root *cobra.Command) {
 	registerList(proj)
 	registerSetDefault(proj)
 	registerTest(proj)
+	libcli.HandleUnknownCommand(proj, "run 'agent-statsig project --help' to see the available commands")
 
 	root.AddCommand(proj)
 }
@@ -43,8 +45,7 @@ func registerAdd(parent *cobra.Command) {
 			alias := args[0]
 
 			if consoleKey == "" {
-				output.WriteError(os.Stderr, agenterrors.New("--console-key is required", agenterrors.FixableByAgent))
-				return nil
+				return agenterrors.New("--console-key is required", agenterrors.FixableByAgent)
 			}
 
 			cred := credential.Credential{
@@ -53,14 +54,12 @@ func registerAdd(parent *cobra.Command) {
 			}
 			storage, err := credential.Store(alias, cred)
 			if err != nil {
-				output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByHuman))
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			proj := config.Project{}
 			if err := config.StoreProject(alias, proj); err != nil {
-				output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByHuman))
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			output.PrintJSON(map[string]any{
@@ -88,9 +87,8 @@ func registerUpdate(parent *cobra.Command) {
 
 			existing, err := credential.Get(alias)
 			if err != nil {
-				output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByAgent).
-					WithHint("Use 'project add' to create a new project"))
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByAgent).
+					WithHint("Use 'project add' to create a new project")
 			}
 
 			if consoleKey != "" {
@@ -102,8 +100,7 @@ func registerUpdate(parent *cobra.Command) {
 
 			storage, err := credential.Store(alias, *existing)
 			if err != nil {
-				output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByHuman))
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			output.PrintJSON(map[string]any{
@@ -130,11 +127,9 @@ func registerRemove(parent *cobra.Command) {
 			if err := credential.Remove(alias); err != nil {
 				var nf *credential.NotFoundError
 				if errors.As(err, &nf) {
-					output.WriteError(os.Stderr, agenterrors.Newf(agenterrors.FixableByAgent, "project %q not found", alias))
-				} else {
-					output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByHuman))
+					return agenterrors.Newf(agenterrors.FixableByAgent, "project %q not found", alias)
 				}
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			_ = config.RemoveProject(alias)
@@ -184,14 +179,12 @@ func registerSetDefault(parent *cobra.Command) {
 			alias := args[0]
 
 			if _, err := credential.Get(alias); err != nil {
-				output.WriteError(os.Stderr, agenterrors.Newf(agenterrors.FixableByAgent, "project %q not found", alias).
-					WithHint("Use 'project list' to see available projects"))
-				return nil
+				return agenterrors.Newf(agenterrors.FixableByAgent, "project %q not found", alias).
+					WithHint("Use 'project list' to see available projects")
 			}
 
 			if err := config.SetDefault(alias); err != nil {
-				output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByHuman))
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			output.PrintJSON(map[string]any{
@@ -217,14 +210,12 @@ func registerTest(parent *cobra.Command) {
 
 			resolved, err := shared.ResolveProject(alias)
 			if err != nil {
-				output.WriteError(os.Stderr, err)
-				return nil
+				return err
 			}
 
 			cred, err := credential.Get(resolved)
 			if err != nil {
-				output.WriteError(os.Stderr, agenterrors.Wrap(err, agenterrors.FixableByHuman))
-				return nil
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			client := api.NewClient(cred.ConsoleKey, cred.ClientKey)
@@ -233,8 +224,7 @@ func registerTest(parent *cobra.Command) {
 
 			_, _, err = client.ListGates(ctx, 1, 1, nil)
 			if err != nil {
-				output.WriteError(os.Stderr, err)
-				return nil
+				return err
 			}
 
 			result := map[string]any{

@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	libcli "github.com/shhac/lib-agent-cli/cli"
+
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
@@ -29,6 +31,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerAbandon(exp, globals)
 	registerShip(exp, globals)
 	shared.RegisterUsage(exp, "experiment", experimentUsage)
+	libcli.HandleUnknownCommand(exp, "run 'agent-statsig experiment usage' to see the available commands")
 
 	root.AddCommand(exp)
 }

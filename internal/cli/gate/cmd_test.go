@@ -11,6 +11,7 @@ import (
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
+	"github.com/shhac/agent-statsig/internal/output"
 )
 
 func globals() *shared.GlobalFlags {
@@ -21,7 +22,7 @@ func runGateCmd(t *testing.T, handler http.HandlerFunc, args ...string) (string,
 	t.Helper()
 	shared.SetupMockServer(t, handler)
 
-	root := &cobra.Command{Use: "test"}
+	root := &cobra.Command{Use: "test", SilenceUsage: true, SilenceErrors: true}
 	Register(root, func() *shared.GlobalFlags { return globals() })
 
 	var stdout, stderr bytes.Buffer
@@ -36,7 +37,9 @@ func runGateCmd(t *testing.T, handler http.HandlerFunc, args ...string) (string,
 	os.Stderr = wErr
 
 	root.SetArgs(args)
-	root.Execute()
+	if err := root.Execute(); err != nil {
+		output.WriteError(os.Stderr, err)
+	}
 
 	wOut.Close()
 	wErr.Close()

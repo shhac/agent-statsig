@@ -9,6 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	libcli "github.com/shhac/lib-agent-cli/cli"
+
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
@@ -34,6 +36,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerCriteria(gate)
 	registerRule(gate, globals)
 	shared.RegisterUsage(gate, "gate", gateUsage)
+	libcli.HandleUnknownCommand(gate, "run 'agent-statsig gate usage' to see the available commands")
 
 	root.AddCommand(gate)
 }

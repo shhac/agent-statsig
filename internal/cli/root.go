@@ -43,9 +43,10 @@ func newRootCmd(version string) *cobra.Command {
 }
 
 // Execute builds the root command and runs it via libcli.Run, which renders any
-// bubbled error in the structured contract and exits 0/1. Command RunE bodies
-// pre-render their own errors via output.WriteError and return nil, so Run only
-// fires for cobra-level errors (unknown command/flag, bad arg count).
+// bubbled error in the structured contract on stderr and exits 1. Command RunE
+// bodies return their errors unrendered (single-sink), so every failure — a
+// command-level error, an unknown subcommand, or a bad flag — is rendered
+// exactly once by Run and exits non-zero.
 func Execute(version string) {
 	libcli.Run(newRootCmd(version))
 }

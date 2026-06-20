@@ -47,9 +47,9 @@ func TestAddRequiresConsoleKey(t *testing.T) {
 	Register(root)
 	root.SetArgs([]string{"project", "add", "myproj"})
 
-	// Should not error (writes to stderr instead)
-	if err := root.Execute(); err != nil {
-		t.Fatal(err)
+	// Single-sink: the command bubbles a fixable error for the caller to render.
+	if err := root.Execute(); err == nil {
+		t.Fatal("expected error when --console-key is missing")
 	}
 
 	// No credential should be stored since --console-key was missing
@@ -91,9 +91,9 @@ func TestRemoveNonexistent(t *testing.T) {
 	Register(root)
 	root.SetArgs([]string{"project", "remove", "nonexistent"})
 
-	// Should not return error (writes structured error to stderr)
-	if err := root.Execute(); err != nil {
-		t.Fatal(err)
+	// Single-sink: removing a missing project bubbles a fixable error.
+	if err := root.Execute(); err == nil {
+		t.Fatal("expected error when removing a nonexistent project")
 	}
 }
 

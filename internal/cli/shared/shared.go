@@ -95,14 +95,10 @@ func WithClient(projectAlias string, timeout int, fn func(ctx context.Context, c
 		client, err = NewClientFromProject(projectAlias)
 	}
 	if err != nil {
-		output.WriteError(os.Stderr, err)
-		return nil
+		return err
 	}
 
-	if err := fn(ctx, client); err != nil {
-		output.WriteError(os.Stderr, err)
-	}
-	return nil
+	return fn(ctx, client)
 }
 
 // ToAnySlice converts a typed slice to []any.
