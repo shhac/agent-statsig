@@ -78,7 +78,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(seg, true)
+				shared.WriteResource(seg, g.Format)
 				return nil
 			})
 		},
@@ -100,7 +100,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(seg, true)
+				shared.WriteResource(seg, g.Format)
 				return nil
 			})
 		},
@@ -121,7 +121,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.DeleteSegment(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "deleted": args[0]}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
 				return nil
 			})
 		},
@@ -140,7 +140,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.ArchiveSegment(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "archived": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "segment": args[0], "archived": true}, g.Format)
 				return nil
 			})
 		},
@@ -173,7 +173,7 @@ func registerIDsGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(raw, false)
+				output.Print(raw, output.ResolveFormat(g.Format), false)
 				return nil
 			})
 		},
@@ -194,7 +194,7 @@ func registerIDsAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.AddSegmentIDs(ctx, args[0], ids); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "added": len(ids)}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "segment": args[0], "added": len(ids)}, g.Format)
 				return nil
 			})
 		},
@@ -217,7 +217,7 @@ func registerIDsRemove(parent *cobra.Command, globals func() *shared.GlobalFlags
 				if err := client.RemoveSegmentIDs(ctx, args[0], ids); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "segment": args[0], "removed": len(ids)}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "segment": args[0], "removed": len(ids)}, g.Format)
 				return nil
 			})
 		},

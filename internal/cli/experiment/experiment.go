@@ -10,7 +10,6 @@ import (
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
-	"github.com/shhac/agent-statsig/internal/output"
 )
 
 func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -84,7 +83,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(exp, true)
+				shared.WriteResource(exp, g.Format)
 				return nil
 			})
 		},
@@ -117,7 +116,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(exp, true)
+				shared.WriteResource(exp, g.Format)
 				return nil
 			})
 		},
@@ -139,7 +138,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.DeleteExperiment(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "deleted": args[0]}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
 				return nil
 			})
 		},
@@ -158,7 +157,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.ArchiveExperiment(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "experiment": args[0], "archived": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "archived": true}, g.Format)
 				return nil
 			})
 		},
@@ -190,7 +189,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(exp, true)
+				shared.WriteResource(exp, g.Format)
 				return nil
 			})
 		},
@@ -210,7 +209,7 @@ func registerStart(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.StartExperiment(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "experiment": args[0], "started": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "started": true}, g.Format)
 				return nil
 			})
 		},
@@ -229,7 +228,7 @@ func registerReset(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.ResetExperiment(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "experiment": args[0], "reset": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "reset": true}, g.Format)
 				return nil
 			})
 		},
@@ -250,7 +249,7 @@ func registerAbandon(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.AbandonExperiment(ctx, args[0], reason); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "experiment": args[0], "abandoned": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "abandoned": true}, g.Format)
 				return nil
 			})
 		},
@@ -274,11 +273,11 @@ func registerShip(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.ShipExperiment(ctx, args[0], groupID, reason, removeTargeting); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{
+				shared.WriteResource(map[string]any{
 					"status":     "ok",
 					"experiment": args[0],
 					"shipped":    groupID,
-				}, true)
+				}, g.Format)
 				return nil
 			})
 		},

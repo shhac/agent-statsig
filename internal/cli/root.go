@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -13,6 +12,7 @@ import (
 	"github.com/shhac/agent-statsig/internal/cli/segment"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	"github.com/shhac/agent-statsig/internal/cli/tag"
+	"github.com/shhac/agent-statsig/internal/output"
 )
 
 var (
@@ -56,7 +56,12 @@ func newRootCmd(version string) *cobra.Command {
 func Execute(version string) error {
 	err := newRootCmd(version).Execute()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		// SilenceErrors keeps cobra from printing; render the structured
+		// {error, fixable_by, hint} line ourselves so no error reaches the
+		// user as plain text. Command RunE bodies pre-render their own errors
+		// via WriteError and return nil, so this only fires for cobra-level
+		// errors (unknown command/flag, bad arg count) and prints exactly once.
+		output.WriteError(os.Stderr, err)
 	}
 	return err
 }

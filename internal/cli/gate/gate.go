@@ -12,7 +12,6 @@ import (
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
-	"github.com/shhac/agent-statsig/internal/output"
 )
 
 func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -89,7 +88,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(gate, true)
+				shared.WriteResource(gate, g.Format)
 				return nil
 			})
 		},
@@ -115,7 +114,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(gate, true)
+				shared.WriteResource(gate, g.Format)
 				return nil
 			})
 		},
@@ -136,7 +135,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.DeleteGate(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "deleted": args[0]}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
 				return nil
 			})
 		},
@@ -155,7 +154,7 @@ func registerEnable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.EnableGate(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "gate": args[0], "isEnabled": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "isEnabled": true}, g.Format)
 				return nil
 			})
 		},
@@ -174,7 +173,7 @@ func registerDisable(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.DisableGate(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "gate": args[0], "isEnabled": false}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "isEnabled": false}, g.Format)
 				return nil
 			})
 		},
@@ -193,7 +192,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.ArchiveGate(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "gate": args[0], "archived": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "archived": true}, g.Format)
 				return nil
 			})
 		},
@@ -212,7 +211,7 @@ func registerLaunch(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.LaunchGate(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "gate": args[0], "launched": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "launched": true}, g.Format)
 				return nil
 			})
 		},
@@ -244,7 +243,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(gate, true)
+				shared.WriteResource(gate, g.Format)
 				return nil
 			})
 		},
@@ -274,9 +273,9 @@ func registerCheck(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				}
 
 				fmt.Fprintf(os.Stderr, "Note: gate evaluation via Console API is not supported. Use the gate 'get' command to inspect rules.\n")
-				output.PrintJSON(map[string]any{
+				shared.WriteResource(map[string]any{
 					"hint": "Use 'gate get' to inspect rules and evaluate locally",
-				}, true)
+				}, g.Format)
 				return nil
 			})
 		},

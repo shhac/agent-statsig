@@ -8,7 +8,6 @@ import (
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
 )
 
 func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -81,7 +80,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(cfg, true)
+				shared.WriteResource(cfg, g.Format)
 				return nil
 			})
 		},
@@ -107,7 +106,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(cfg, true)
+				shared.WriteResource(cfg, g.Format)
 				return nil
 			})
 		},
@@ -128,7 +127,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.DeleteConfig(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "deleted": args[0]}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
 				return nil
 			})
 		},
@@ -147,7 +146,7 @@ func registerEnable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.EnableConfig(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "config": args[0], "isEnabled": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "config": args[0], "isEnabled": true}, g.Format)
 				return nil
 			})
 		},
@@ -166,7 +165,7 @@ func registerDisable(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.DisableConfig(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "config": args[0], "isEnabled": false}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "config": args[0], "isEnabled": false}, g.Format)
 				return nil
 			})
 		},
@@ -185,7 +184,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err := client.ArchiveConfig(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "config": args[0], "archived": true}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "config": args[0], "archived": true}, g.Format)
 				return nil
 			})
 		},
@@ -217,7 +216,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(cfg, true)
+				shared.WriteResource(cfg, g.Format)
 				return nil
 			})
 		},

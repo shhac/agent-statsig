@@ -8,7 +8,6 @@ import (
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
-	"github.com/shhac/agent-statsig/internal/output"
 )
 
 func registerRule(parent *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -37,7 +36,7 @@ func registerRuleList(parent *cobra.Command, globals func() *shared.GlobalFlags)
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"rules": rules}, true)
+				shared.WriteResource(map[string]any{"rules": rules}, g.Format)
 				return nil
 			})
 		},
@@ -91,7 +90,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(created, true)
+				shared.WriteResource(created, g.Format)
 				return nil
 			})
 		},
@@ -149,7 +148,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 				if err := client.UpdateGateRule(ctx, args[0], ruleID, update); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "rule": ruleID}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "rule": ruleID}, g.Format)
 				return nil
 			})
 		},
@@ -176,7 +175,7 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 				if err := client.DeleteGateRule(ctx, args[0], ruleID); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "deleted": ruleID}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": ruleID}, g.Format)
 				return nil
 			})
 		},

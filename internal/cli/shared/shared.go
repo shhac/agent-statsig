@@ -239,6 +239,12 @@ func MapKeys[V any](m map[string]V) []string {
 	return keys
 }
 
+// WriteResource writes a single resource in the resolved format (NDJSON, JSON,
+// or YAML); the format defaults to JSON when the flag is empty or unparseable.
+func WriteResource(data any, format string) {
+	output.Print(data, output.ResolveFormat(format), true)
+}
+
 func WritePaginatedList(items []any, pagination *api.PaginationInfo, format string) {
 	f := output.ResolveFormat(format)
 	if f == output.FormatNDJSON {
@@ -263,5 +269,5 @@ func WritePaginatedList(items []any, pagination *api.PaginationInfo, format stri
 			"page":       pagination.PageNumber,
 		}
 	}
-	output.PrintJSON(result, true)
+	output.Print(result, f, true)
 }

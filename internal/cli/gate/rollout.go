@@ -8,7 +8,6 @@ import (
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
 )
 
 // FindPublicRule returns the ID of the first rule with a "public" condition, or empty string if none.
@@ -64,11 +63,11 @@ func registerRollout(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 					}
 				}
 
-				output.PrintJSON(map[string]any{
+				shared.WriteResource(map[string]any{
 					"status":         "ok",
 					"gate":           args[0],
 					"rolloutPercent": percent,
-				}, true)
+				}, g.Format)
 				return nil
 			})
 		},

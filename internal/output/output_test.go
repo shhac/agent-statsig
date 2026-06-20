@@ -3,9 +3,12 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
+	out "github.com/shhac/lib-agent-output"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseFormat(t *testing.T) {
@@ -36,6 +39,32 @@ func TestParseFormat(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("ParseFormat(%q) = %q, want %q", tt.input, got, tt.want)
 		}
+	}
+}
+
+// TestYAMLEncoderRegistered pins that `--format yaml` actually works: init
+// registers a YAML encoder with lib-agent-output, so out.Print(FormatYAML)
+// emits valid, 2-space-indented YAML rather than erroring on an unregistered
+// format. Exercising out.Print directly (writer-injectable) hits the same
+// encoder the CLI's Print routes through.
+func TestYAMLEncoderRegistered(t *testing.T) {
+	var buf bytes.Buffer
+	data := map[string]any{"name": "gate", "isEnabled": true}
+	if err := out.Print(&buf, data, FormatYAML, out.PruneNils); err != nil {
+		t.Fatalf("out.Print(FormatYAML) error: %v (encoder not registered?)", err)
+	}
+
+	got := buf.String()
+	if !strings.Contains(got, "name: gate") || !strings.Contains(got, "isEnabled: true") {
+		t.Errorf("YAML output missing expected fields:\n%s", got)
+	}
+
+	var decoded map[string]any
+	if err := yaml.Unmarshal(buf.Bytes(), &decoded); err != nil {
+		t.Fatalf("output is not valid YAML: %v\n%s", err, got)
+	}
+	if decoded["name"] != "gate" || decoded["isEnabled"] != true {
+		t.Errorf("round-tripped YAML = %v, want name=gate isEnabled=true", decoded)
 	}
 }
 

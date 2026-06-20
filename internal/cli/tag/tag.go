@@ -7,7 +7,6 @@ import (
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
 )
 
 func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -70,7 +69,7 @@ func registerGet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(tag, true)
+				shared.WriteResource(tag, g.Format)
 				return nil
 			})
 		},
@@ -93,7 +92,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(tag, true)
+				shared.WriteResource(tag, g.Format)
 				return nil
 			})
 		},
@@ -128,7 +127,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				output.PrintJSON(tag, true)
+				shared.WriteResource(tag, g.Format)
 				return nil
 			})
 		},
@@ -150,7 +149,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := client.DeleteTag(ctx, args[0]); err != nil {
 					return err
 				}
-				output.PrintJSON(map[string]any{"status": "ok", "deleted": args[0]}, true)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
 				return nil
 			})
 		},
