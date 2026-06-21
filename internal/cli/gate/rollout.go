@@ -32,7 +32,7 @@ func registerRollout(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				gate, err := client.GetGate(ctx, args[0])
 				if err != nil {
 					return err

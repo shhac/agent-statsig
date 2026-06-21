@@ -83,15 +83,7 @@ func NewClientFromProject(projectAlias string) (*api.Client, error) {
 // When set, WithClient uses this instead of NewClientFromProject.
 var ClientFactory func() (*api.Client, error)
 
-func WithClient(projectAlias string, timeout int, fn func(ctx context.Context, client *api.Client) error) error {
-	return withClient(projectAlias, timeout, false, fn)
-}
-
-func WithClientDebug(projectAlias string, timeout int, debug bool, fn func(ctx context.Context, client *api.Client) error) error {
-	return withClient(projectAlias, timeout, debug, fn)
-}
-
-func withClient(projectAlias string, timeout int, debug bool, fn func(ctx context.Context, client *api.Client) error) error {
+func WithClient(projectAlias string, timeout int, debug bool, fn func(ctx context.Context, client *api.Client) error) error {
 	ctx, cancel := MakeContext(timeout)
 	defer cancel()
 
@@ -115,7 +107,7 @@ func withClient(projectAlias string, timeout int, debug bool, fn func(ctx contex
 // (NDJSON by default; item-level misses become @unresolved records on stdout;
 // command-level failures bubble to the caller).
 func GetEntities(g *GlobalFlags, args []string, getOne func(ctx context.Context, client *api.Client, id string) (any, error)) error {
-	return WithClientDebug(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
+	return WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 		return libcli.EntityGet(os.Stdout, g.Format, args, func(id string) (any, error) {
 			return getOne(ctx, client, id)
 		})

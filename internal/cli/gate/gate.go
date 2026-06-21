@@ -50,7 +50,7 @@ func registerList(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Short: "List feature gates",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				var tags []string
 				if tag != "" {
 					tags = strings.Split(tag, ",")
@@ -103,7 +103,7 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := shared.ValidateTags(ctx, client, tags); err != nil {
 					return err
 				}
@@ -128,7 +128,7 @@ func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := client.DeleteGate(ctx, args[0]); err != nil {
 					return err
 				}
@@ -147,7 +147,7 @@ func registerEnable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := client.EnableGate(ctx, args[0]); err != nil {
 					return err
 				}
@@ -166,7 +166,7 @@ func registerDisable(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := client.DisableGate(ctx, args[0]); err != nil {
 					return err
 				}
@@ -185,7 +185,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := client.ArchiveGate(ctx, args[0]); err != nil {
 					return err
 				}
@@ -204,7 +204,7 @@ func registerLaunch(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := client.LaunchGate(ctx, args[0]); err != nil {
 					return err
 				}
@@ -225,7 +225,7 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				update, err := shared.ParseJSONArg(args[1])
 				if err != nil {
 					return err
@@ -258,7 +258,7 @@ func registerCheck(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if !client.HasClientKey() {
 					return agenterrors.New("client key required for evaluation", agenterrors.FixableByHuman).
 						WithHint("Add a client key: 'project update <alias> --client-key <key>'")

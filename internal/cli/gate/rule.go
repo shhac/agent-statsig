@@ -31,7 +31,7 @@ func registerRuleList(parent *cobra.Command, globals func() *shared.GlobalFlags)
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				rules, err := client.GetGateRules(ctx, args[0])
 				if err != nil {
 					return err
@@ -61,7 +61,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := shared.ValidateCriteria(criteria, operator); err != nil {
 					return err
 				}
@@ -122,7 +122,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if ruleID == "" {
 					return agenterrors.New("--rule is required", agenterrors.FixableByAgent).
 						WithHint("Use 'gate rule list <gate>' to find rule IDs")
@@ -171,7 +171,7 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, func(ctx context.Context, client *api.Client) error {
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
 				if err := client.DeleteGateRule(ctx, args[0], ruleID); err != nil {
 					return err
 				}
