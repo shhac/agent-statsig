@@ -25,9 +25,9 @@ fixable_by classification (agent/human/retry). Use --format yaml or
 
 QUICK START (read-only — safe to explore)
   gate list                          List all feature gates
-  gate get <name>                    Inspect a gate's rules and state
+  gate get <name>...                 Inspect one or more gates' rules and state
   config list                        List all dynamic configs
-  config get <name>                  Inspect a config's rules and values
+  config get <name>...               Inspect one or more configs' rules and values
   experiment list                    List all experiments
   segment list                       List all segments
   tag list                           List all tags
@@ -40,12 +40,12 @@ COMMON WORKFLOWS
     gate rule add <name> --name "Team" --criteria email --value user@co.com
 
   To inspect before modifying:
-    gate get <name>                  ← read rules first
+    gate get <name>...               ← read rules first (one or more gates)
     gate rule list <name>            ← see rule IDs
     gate rule update <name> --rule <id> --add-value new@co.com
 
   To modify a dynamic config's value:
-    config get <name>                ← check schema + current rules
+    config get <name>...             ← check schema + current rules
     config rule add <name> --name "Rule" --criteria email --value user@co.com --return-value '{"key":"val"}'
 
   To tag entities for organization:
@@ -56,6 +56,7 @@ GLOBAL FLAGS
   -p, --project <alias>              Project alias (or AGENT_STATSIG_PROJECT env)
   -f, --format json|yaml|jsonl       Output format (default: json)
   -t, --timeout <ms>                 Request timeout in milliseconds
+  -d, --debug                        Log [debug] METHOD URL to stderr for every API call
 
 PER-ENTITY REFERENCE (run these for detailed help + examples)
   gate usage                      Feature gates reference
@@ -71,6 +72,19 @@ PROJECT MANAGEMENT
   project list
   project set-default <alias>
   project test [alias]
+
+OUTPUT
+  List commands default to JSON. Get commands default to NDJSON (one record per id,
+  in input order). Use --format json|yaml for a {"data":[…],"@unresolved":[…]} envelope.
+
+  Get (single + multi). get <id>... takes one or more ids and returns one result per
+  id, in input order. Default output is NDJSON: one line per id — the record, or
+  {"@unresolved":{"id","reason","fixable_by","hint"?}} for an id that couldn't be
+  resolved (e.g. not found / bad id). --format json|yaml collapses to one
+  {"data":[…],"@unresolved":[…]} envelope. A single get <id> is just the one-element
+  case (NDJSON one line by default; pass --format json for the object). Item-level
+  misses stay on stdout and exit 0; only a command-level failure (auth, network) goes
+  to stderr with exit 1 and empty stdout.
 
 ERROR HANDLING
   Errors include a hint and classification:

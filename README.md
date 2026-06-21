@@ -55,7 +55,8 @@ agent-statsig project test
 
 ```bash
 agent-statsig gate list
-agent-statsig gate get my_feature_gate
+agent-statsig gate get my_feature_gate           # NDJSON by default
+agent-statsig gate get gate1 gate2               # multi-get, one line per id
 agent-statsig config list
 agent-statsig experiment list --search "checkout"
 ```
@@ -104,10 +105,19 @@ agent-statsig gate criteria      # List all 25 condition types + operators
 ## Output Formats
 
 ```bash
-agent-statsig gate get my_gate                    # JSON (default, pretty)
+agent-statsig gate get my_gate                    # NDJSON (default for get)
+agent-statsig gate get my_gate --format json       # JSON object (single)
+agent-statsig gate get gate1 gate2                # NDJSON — one line per id, @unresolved for misses
+agent-statsig gate get gate1 gate2 --format json  # {"data":[…],"@unresolved":[…]} envelope
 agent-statsig gate list --format jsonl             # NDJSON (one per line)
 agent-statsig gate get my_gate --format yaml       # YAML
+agent-statsig gate list --debug                    # log [debug] METHOD URL to stderr
 ```
+
+Get commands accept one or more ids (`get <id>...`) and emit NDJSON by default — one
+record per id in input order. An id that cannot be resolved emits an
+`{"@unresolved":{"id","reason","fixable_by"}}` line on stdout and exits 0. Only
+command-level failures (auth, network) go to stderr with exit 1.
 
 ## Error Output
 

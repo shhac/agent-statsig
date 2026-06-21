@@ -21,7 +21,7 @@ Manage Statsig feature gates, dynamic configs, experiments, and segments via the
 
 ### Always read before writing
 
-1. **Inspect first**: Run `agent-statsig gate get <name>` (or config/experiment/segment get) to understand the current state before making changes
+1. **Inspect first**: Run `agent-statsig gate get <name>` (or config/experiment/segment get) to understand the current state before making changes. Gets default to NDJSON; pass `--format json` for a pretty object.
 2. **Check rules**: Run `gate rule list <name>` to see rule IDs before updating/removing rules
 3. **Validate criteria**: Run `gate criteria` if unsure which condition types or operators to use
 
@@ -51,10 +51,10 @@ All errors are JSON to stderr with a classification:
 ```bash
 # Explore (safe, read-only)
 agent-statsig gate list [--search <text>] [--tag <tag>]
-agent-statsig gate get <name>
-agent-statsig config get <name>
-agent-statsig experiment get <name>
-agent-statsig segment get <name>
+agent-statsig gate get <name>...                 # 1..N ids, NDJSON default; @unresolved for misses
+agent-statsig config get <name>...
+agent-statsig experiment get <name>...
+agent-statsig segment get <name>...
 
 # Modify gates
 agent-statsig gate enable <name>
@@ -101,6 +101,19 @@ agent-statsig segment usage
 agent-statsig tag usage
 agent-statsig usage                  # top-level overview
 ```
+
+## Output and Debug
+
+### Get contract
+`get <id>...` accepts one or more ids and returns one NDJSON line per id, in input order.
+An unresolvable id emits `{"@unresolved":{"id","reason","fixable_by","hint"?}}` on stdout
+and exits 0 (item-level miss). Only command-level failures (auth, network) go to stderr
+with exit 1. `--format json|yaml` collapses results into a `{"data":[…],"@unresolved":[…]}`
+envelope.
+
+### Debug flag
+`-d` / `--debug` logs `[debug] METHOD URL` to stderr for every API call on all API
+commands. Useful for diagnosing auth or routing issues.
 
 ## Key Concepts
 
