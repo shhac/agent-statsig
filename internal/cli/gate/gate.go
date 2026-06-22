@@ -122,98 +122,38 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "delete <name>",
-		Short: "Delete a feature gate",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteGate(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "delete <name>", "Delete a feature gate", "deleted", nil,
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DeleteGate(ctx, id)
+		})
 }
 
 func registerEnable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "enable <name>",
-		Short: "Enable a feature gate",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.EnableGate(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "isEnabled": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "enable <name>", "Enable a feature gate", "gate", map[string]any{"isEnabled": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.EnableGate(ctx, id)
+		})
 }
 
 func registerDisable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "disable <name>",
-		Short: "Disable a feature gate",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DisableGate(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "isEnabled": false}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "disable <name>", "Disable a feature gate", "gate", map[string]any{"isEnabled": false},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DisableGate(ctx, id)
+		})
 }
 
 func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "archive <name>",
-		Short: "Archive a feature gate",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.ArchiveGate(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "archived": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "archive <name>", "Archive a feature gate", "gate", map[string]any{"archived": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.ArchiveGate(ctx, id)
+		})
 }
 
 func registerLaunch(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "launch <name>",
-		Short: "Launch a feature gate",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.LaunchGate(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "gate": args[0], "launched": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "launch <name>", "Launch a feature gate", "gate", map[string]any{"launched": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.LaunchGate(ctx, id)
+		})
 }
 
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {

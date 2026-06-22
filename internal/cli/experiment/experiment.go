@@ -125,41 +125,17 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "delete <name>",
-		Short: "Delete an experiment",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteExperiment(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "delete <name>", "Delete an experiment", "deleted", nil,
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DeleteExperiment(ctx, id)
+		})
 }
 
 func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "archive <name>",
-		Short: "Archive an experiment",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.ArchiveExperiment(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "archived": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "archive <name>", "Archive an experiment", "experiment", map[string]any{"archived": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.ArchiveExperiment(ctx, id)
+		})
 }
 
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
@@ -196,41 +172,17 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerStart(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "start <name>",
-		Short: "Start an experiment",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.StartExperiment(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "started": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "start <name>", "Start an experiment", "experiment", map[string]any{"started": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.StartExperiment(ctx, id)
+		})
 }
 
 func registerReset(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "reset <name>",
-		Short: "Reset an experiment",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.ResetExperiment(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "experiment": args[0], "reset": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "reset <name>", "Reset an experiment", "experiment", map[string]any{"reset": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.ResetExperiment(ctx, id)
+		})
 }
 
 func registerAbandon(parent *cobra.Command, globals func() *shared.GlobalFlags) {

@@ -107,41 +107,17 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "delete <name>",
-		Short: "Delete a segment",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteSegment(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "delete <name>", "Delete a segment", "deleted", nil,
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DeleteSegment(ctx, id)
+		})
 }
 
 func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "archive <name>",
-		Short: "Archive a segment",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.ArchiveSegment(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "segment": args[0], "archived": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "archive <name>", "Archive a segment", "segment", map[string]any{"archived": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.ArchiveSegment(ctx, id)
+		})
 }
 
 func registerIDs(parent *cobra.Command, globals func() *shared.GlobalFlags) {

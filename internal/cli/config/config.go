@@ -114,79 +114,31 @@ func registerCreate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "delete <name>",
-		Short: "Delete a dynamic config",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteConfig(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "delete <name>", "Delete a dynamic config", "deleted", nil,
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DeleteConfig(ctx, id)
+		})
 }
 
 func registerEnable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "enable <name>",
-		Short: "Enable a dynamic config",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.EnableConfig(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "config": args[0], "isEnabled": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "enable <name>", "Enable a dynamic config", "config", map[string]any{"isEnabled": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.EnableConfig(ctx, id)
+		})
 }
 
 func registerDisable(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "disable <name>",
-		Short: "Disable a dynamic config",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DisableConfig(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "config": args[0], "isEnabled": false}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "disable <name>", "Disable a dynamic config", "config", map[string]any{"isEnabled": false},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DisableConfig(ctx, id)
+		})
 }
 
 func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "archive <name>",
-		Short: "Archive a dynamic config",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.ArchiveConfig(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "config": args[0], "archived": true}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "archive <name>", "Archive a dynamic config", "config", map[string]any{"archived": true},
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.ArchiveConfig(ctx, id)
+		})
 }
 
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {

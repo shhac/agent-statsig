@@ -136,20 +136,8 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 }
 
 func registerDelete(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	cmd := &cobra.Command{
-		Use:   "delete <id>",
-		Short: "Delete a tag",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			g := globals()
-			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteTag(ctx, args[0]); err != nil {
-					return err
-				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": args[0]}, g.Format)
-				return nil
-			})
-		},
-	}
-	parent.AddCommand(cmd)
+	shared.RegisterAction(parent, globals, "delete <id>", "Delete a tag", "deleted", nil,
+		func(ctx context.Context, client *api.Client, id string) error {
+			return client.DeleteTag(ctx, id)
+		})
 }
