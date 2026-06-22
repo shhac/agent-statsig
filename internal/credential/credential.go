@@ -17,12 +17,6 @@ type Credential struct {
 	KeychainManaged bool   `json:"keychain_managed,omitempty"`
 }
 
-type credentialEntry struct {
-	ConsoleKey      string `json:"console_key"`
-	ClientKey       string `json:"client_key,omitempty"`
-	KeychainManaged bool   `json:"keychain_managed,omitempty"`
-}
-
 type NotFoundError struct {
 	Name string
 }
@@ -35,25 +29,25 @@ func credentialsPath() string {
 	return filepath.Join(config.ConfigDir(), "credentials.json")
 }
 
-func readIndex() (map[string]credentialEntry, error) {
+func readIndex() (map[string]Credential, error) {
 	data, err := os.ReadFile(credentialsPath())
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make(map[string]credentialEntry), nil
+			return make(map[string]Credential), nil
 		}
 		return nil, err
 	}
-	var index map[string]credentialEntry
+	var index map[string]Credential
 	if err := json.Unmarshal(data, &index); err != nil {
 		return nil, err
 	}
 	if index == nil {
-		index = make(map[string]credentialEntry)
+		index = make(map[string]Credential)
 	}
 	return index, nil
 }
 
-func writeIndex(index map[string]credentialEntry) error {
+func writeIndex(index map[string]Credential) error {
 	dir := config.ConfigDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -72,7 +66,7 @@ func Store(name string, cred Credential) (string, error) {
 	}
 
 	storage := "file"
-	entry := credentialEntry{
+	entry := Credential{
 		ConsoleKey: cred.ConsoleKey,
 		ClientKey:  cred.ClientKey,
 	}
@@ -101,12 +95,7 @@ func Get(name string) (*Credential, error) {
 		return nil, &NotFoundError{Name: name}
 	}
 
-	cred := &Credential{
-		ConsoleKey:      entry.ConsoleKey,
-		ClientKey:       entry.ClientKey,
-		KeychainManaged: entry.KeychainManaged,
-	}
-
+	cred := entry
 	if entry.KeychainManaged {
 		if consoleKey, clientKey, err := keychainGet(name); err == nil {
 			cred.ConsoleKey = consoleKey
@@ -114,7 +103,7 @@ func Get(name string) (*Credential, error) {
 		}
 	}
 
-	return cred, nil
+	return &cred, nil
 }
 
 func Remove(name string) error {
