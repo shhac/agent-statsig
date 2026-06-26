@@ -156,4 +156,4 @@ npx skills add shhac/agent-statsig
 
 ## License
 
-MIT
+PolyForm Perimeter License 1.0.0 — see [LICENSE](LICENSE).
