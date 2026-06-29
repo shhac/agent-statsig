@@ -10,6 +10,10 @@ import (
 // keychainService is owned by this CLI: the lib must not know the reverse-domain prefix.
 const keychainService = "app.paulie.agent-statsig"
 
+// MCPKeychainService is the Keychain service for the MCP server's local-OAuth
+// secrets — the CLI's service plus a ".mcp" namespace, separate from the API creds.
+func MCPKeychainService() string { return keychainService + ".mcp" }
+
 var keychain = creds.NewKeychain(keychainService)
 
 // keychainStore saves credentials to the macOS Keychain.

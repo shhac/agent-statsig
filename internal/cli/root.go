@@ -13,6 +13,7 @@ import (
 	"github.com/shhac/agent-statsig/internal/cli/segment"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
 	"github.com/shhac/agent-statsig/internal/cli/tag"
+	"github.com/shhac/agent-statsig/internal/credential"
 	"github.com/shhac/agent-statsig/internal/output"
 )
 
@@ -50,7 +51,10 @@ func newRootCmd(version string) *cobra.Command {
 	exposeGroups(root,
 		"experiment", "gate", "project", "segment", "tag")
 
-	root.AddCommand(agentmcp.Command(root, agentmcp.WithHiddenFlags("color", "expose")))
+	root.AddCommand(agentmcp.Command(root,
+		agentmcp.WithHiddenFlags("color", "expose"),
+		agentmcp.WithOAuthKeyringService(credential.MCPKeychainService()),
+	))
 
 	return root
 }
