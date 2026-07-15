@@ -146,13 +146,13 @@ agent-statsig project set-default staging
 agent-statsig -p production gate list
 ```
 
-## Claude Code Skill
-
-Install as a Claude Code skill for automatic discovery:
+### Claude Code / AI agent skill
 
 ```bash
-npx skills add shhac/agent-statsig
+npx skills add shhac/agent-skills --skill agent-statsig --global
 ```
+
+Installs the `agent-statsig` skill globally so Claude Code (and other AI agents) can discover and use it automatically. It ships from [`shhac/agent-skills`](https://github.com/shhac/agent-skills) — the whole family's skills in one repo, so `npx skills update` checks a single source no matter how many you use. Want several at once? Run `npx skills add shhac/agent-skills --global` and pick from the list.
 
 ## License
 
