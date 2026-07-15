@@ -146,7 +146,7 @@ agent-statsig project set-default staging
 agent-statsig -p production gate list
 ```
 
-### Claude Code / AI agent skill
+## Claude Code / AI agent skill
 
 ```bash
 npx skills add shhac/agent-skills --skill agent-statsig --global
