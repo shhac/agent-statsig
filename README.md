@@ -21,6 +21,14 @@ Statsig feature flag CLI for AI agents. Manage gates, dynamic configs, experimen
 brew install shhac/tap/agent-statsig
 ```
 
+### Claude Code / AI agent skill
+
+```bash
+npx skills add shhac/agent-skills --skill agent-statsig --global
+```
+
+Installs the `agent-statsig` skill globally so Claude Code (and other AI agents) can discover and use it automatically. It ships from [`shhac/agent-skills`](https://github.com/shhac/agent-skills) — the whole family's skills in one repo, so `npx skills update` checks a single source no matter how many you use. Want several at once? Run `npx skills add shhac/agent-skills --global` and pick from the list.
+
 ### Go Install
 
 ```bash
@@ -145,14 +153,6 @@ agent-statsig project add staging --console-key "console-yyy"
 agent-statsig project set-default staging
 agent-statsig -p production gate list
 ```
-
-## Claude Code / AI agent skill
-
-```bash
-npx skills add shhac/agent-skills --skill agent-statsig --global
-```
-
-Installs the `agent-statsig` skill globally so Claude Code (and other AI agents) can discover and use it automatically. It ships from [`shhac/agent-skills`](https://github.com/shhac/agent-skills) — the whole family's skills in one repo, so `npx skills update` checks a single source no matter how many you use. Want several at once? Run `npx skills add shhac/agent-skills --global` and pick from the list.
 
 ## License
 
