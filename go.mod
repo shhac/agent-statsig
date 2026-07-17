@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
-	github.com/shhac/lib-agent-cli v0.19.0
+	github.com/shhac/lib-agent-cli v0.21.0
 	github.com/shhac/lib-agent-mcp v0.11.0
 	github.com/shhac/lib-agent-output v0.10.0
 	github.com/spf13/cobra v1.10.2
@@ -29,5 +29,3 @@ require (
 	golang.org/x/text v0.18.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/shhac/lib-agent-cli => ../lib-agent-cli
