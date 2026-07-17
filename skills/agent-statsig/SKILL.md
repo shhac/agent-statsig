@@ -146,7 +146,13 @@ A rule with no environments applies to all environments.
 
 If the project isn't configured yet:
 ```bash
-agent-statsig project add <alias> --console-key <key> [--client-key <key>]
+agent-statsig project add <alias> --form   # preferred: prompts for keys via a native OS dialog
 agent-statsig project test
 ```
+`--form` opens a native dialog (macOS osascript, Linux zenity/kdialog, Windows Win32) for any key not passed on the command line. The user types the secret directly into the OS popup, so you (the agent) never see it — keep it off argv. Fully non-interactive alternative (keys land in argv/history):
+```bash
+agent-statsig project add <alias> --console-key <key> [--client-key <key>]
+```
+If `--form` can't run (SSH/headless), the CLI errors with `fixable_by="human"` and a hint pointing at the non-interactive fallback — surface it, don't retry.
+
 Tell the user to get their Console API key from Statsig Console → Settings → Keys & Environments.

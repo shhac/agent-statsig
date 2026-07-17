@@ -36,6 +36,7 @@ func Register(root *cobra.Command) {
 
 func registerAdd(parent *cobra.Command) {
 	var consoleKey, clientKey string
+	var form bool
 
 	cmd := &cobra.Command{
 		Use:   "add <alias>",
@@ -43,6 +44,15 @@ func registerAdd(parent *cobra.Command) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			alias := args[0]
+
+			if form {
+				filledConsole, filledClient, err := promptMissingViaDialog(cmd.Context(), alias, consoleKey, clientKey)
+				if err != nil {
+					return err
+				}
+				consoleKey = filledConsole
+				clientKey = filledClient
+			}
 
 			if consoleKey == "" {
 				return agenterrors.New("--console-key is required", agenterrors.FixableByAgent)
@@ -72,11 +82,13 @@ func registerAdd(parent *cobra.Command) {
 	}
 	cmd.Flags().StringVar(&consoleKey, "console-key", "", "Statsig Console API key")
 	cmd.Flags().StringVar(&clientKey, "client-key", "", "Statsig Client API key (for evaluation)")
+	cmd.Flags().BoolVar(&form, "form", false, "Prompt for missing keys via a native OS dialog (the agent never sees the input)")
 	parent.AddCommand(cmd)
 }
 
 func registerUpdate(parent *cobra.Command) {
 	var consoleKey, clientKey string
+	var form bool
 
 	cmd := &cobra.Command{
 		Use:   "update <alias>",
@@ -89,6 +101,15 @@ func registerUpdate(parent *cobra.Command) {
 			if err != nil {
 				return agenterrors.Wrap(err, agenterrors.FixableByAgent).
 					WithHint("Use 'project add' to create a new project")
+			}
+
+			if form {
+				filledConsole, filledClient, err := promptMissingViaDialog(cmd.Context(), alias, consoleKey, clientKey)
+				if err != nil {
+					return err
+				}
+				consoleKey = filledConsole
+				clientKey = filledClient
 			}
 
 			if consoleKey != "" {
@@ -113,6 +134,7 @@ func registerUpdate(parent *cobra.Command) {
 	}
 	cmd.Flags().StringVar(&consoleKey, "console-key", "", "Statsig Console API key")
 	cmd.Flags().StringVar(&clientKey, "client-key", "", "Statsig Client API key")
+	cmd.Flags().BoolVar(&form, "form", false, "Prompt for missing keys via a native OS dialog (the agent never sees the input)")
 	parent.AddCommand(cmd)
 }
 

@@ -66,8 +66,10 @@ PER-ENTITY REFERENCE (run these for detailed help + examples)
   tag usage                       Tags reference
 
 PROJECT MANAGEMENT
-  project add <alias> --console-key <key> [--client-key <key>]
-  project update <alias> [--console-key <key>] [--client-key <key>]
+  project add <alias> [--console-key <key>] [--client-key <key>] [--form]
+    --form prompts for missing keys via a native OS dialog (preferred: the
+    agent never sees the typed secret — it stays off argv and out of context).
+  project update <alias> [--console-key <key>] [--client-key <key>] [--form]
   project remove <alias>
   project list
   project set-default <alias>

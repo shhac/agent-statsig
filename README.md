@@ -50,6 +50,12 @@ make build
 Get your Console API key from **Statsig Console → Settings → Keys & Environments**.
 
 ```bash
+# Preferred: --form prompts for the keys via a native OS dialog, so the
+# secret is typed straight into the OS — never onto the command line, shell
+# history, or (when an agent drives the CLI) the agent's context.
+agent-statsig project add myproject --form
+
+# Non-interactive equivalent (keys land in argv/history):
 agent-statsig project add myproject --console-key "console-xxx" --client-key "client-xxx"
 ```
 
