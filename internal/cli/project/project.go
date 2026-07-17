@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	libcli "github.com/shhac/lib-agent-cli/cli"
+	"github.com/shhac/lib-agent-cli/creds"
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/shared"
@@ -44,6 +45,15 @@ func registerAdd(parent *cobra.Command) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			alias := args[0]
+
+			// Console key is a genuine server secret: resolve --console-key flag,
+			// else a value piped on stdin, keeping it off argv/history. The client
+			// key is a publishable client SDK key, so it stays on flag/--form.
+			var err error
+			consoleKey, err = creds.ReadSecret(cmd.InOrStdin(), consoleKey)
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
 
 			if form {
 				filledConsole, filledClient, err := promptMissingViaDialog(cmd.Context(), alias, consoleKey, clientKey)
@@ -101,6 +111,14 @@ func registerUpdate(parent *cobra.Command) {
 			if err != nil {
 				return agenterrors.Wrap(err, agenterrors.FixableByAgent).
 					WithHint("Use 'project add' to create a new project")
+			}
+
+			// Console key is a genuine server secret: resolve --console-key flag,
+			// else a value piped on stdin, keeping it off argv/history. The client
+			// key is a publishable client SDK key, so it stays on flag/--form.
+			consoleKey, err = creds.ReadSecret(cmd.InOrStdin(), consoleKey)
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 
 			if form {

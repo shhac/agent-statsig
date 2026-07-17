@@ -1,6 +1,7 @@
 package project
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -81,6 +82,74 @@ func TestAddAndList(t *testing.T) {
 	cfg := config.Read()
 	if cfg.DefaultProject != "testproj" {
 		t.Errorf("default = %q, want testproj", cfg.DefaultProject)
+	}
+}
+
+// TestAddConsoleKeyFromStdin covers the non-interactive secret path: the
+// console key is piped on stdin (kept off argv/history) rather than passed
+// as a flag. ReadSecret trims the piped value.
+func TestAddConsoleKeyFromStdin(t *testing.T) {
+	setupTestDir(t)
+
+	root := &cobra.Command{Use: "test"}
+	Register(root)
+	root.SetArgs([]string{"project", "add", "stdinproj", "--client-key", "client-pub"})
+	root.SetIn(strings.NewReader("  console-piped\n"))
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	cred, err := credential.Get("stdinproj")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cred.ConsoleKey != "console-piped" {
+		t.Errorf("ConsoleKey = %q, want trimmed 'console-piped'", cred.ConsoleKey)
+	}
+	if cred.ClientKey != "client-pub" {
+		t.Errorf("ClientKey = %q, want 'client-pub'", cred.ClientKey)
+	}
+}
+
+// TestAddConsoleKeyFlagWinsOverStdin verifies precedence: an explicit
+// --console-key short-circuits ReadSecret, so a differing piped value is
+// never consulted.
+func TestAddConsoleKeyFlagWinsOverStdin(t *testing.T) {
+	setupTestDir(t)
+
+	root := &cobra.Command{Use: "test"}
+	Register(root)
+	root.SetArgs([]string{"project", "add", "flagwins", "--console-key", "from-flag"})
+	root.SetIn(strings.NewReader("from-stdin"))
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	cred, err := credential.Get("flagwins")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cred.ConsoleKey != "from-flag" {
+		t.Errorf("ConsoleKey = %q, want 'from-flag' (flag must win over stdin)", cred.ConsoleKey)
+	}
+}
+
+// TestAddEmptyStdinStillRequiresConsoleKey confirms the required-ness error
+// still fires when neither the flag nor a piped stdin supplies the key.
+func TestAddEmptyStdinStillRequiresConsoleKey(t *testing.T) {
+	setupTestDir(t)
+
+	root := &cobra.Command{Use: "test"}
+	Register(root)
+	root.SetArgs([]string{"project", "add", "emptyproj"})
+	root.SetIn(strings.NewReader(""))
+
+	if err := root.Execute(); err == nil {
+		t.Fatal("expected error when neither --console-key nor stdin supplies the key")
+	}
+
+	if _, err := credential.Get("emptyproj"); err == nil {
+		t.Error("credential should not exist without a console key")
 	}
 }
 
