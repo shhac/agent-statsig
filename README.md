@@ -49,15 +49,19 @@ make build
 
 Get your Console API key from **Statsig Console → Settings → Keys & Environments**.
 
+The **Console API key is a genuine server secret** — keep it off the command line (argv, shell history, and, when an agent drives the CLI, the agent's context). The **Client SDK key** is publishable, so it is fine on a flag.
+
 ```bash
-# Preferred: --form prompts for the keys via a native OS dialog, so the
-# secret is typed straight into the OS — never onto the command line, shell
-# history, or (when an agent drives the CLI) the agent's context.
+# Preferred: --form prompts for missing keys via a native OS dialog, so the
+# secret is typed straight into the OS — never onto the command line.
 agent-statsig project add myproject --form
 
-# Non-interactive equivalent (keys land in argv/history):
-agent-statsig project add myproject --console-key "console-xxx" --client-key "client-xxx"
+# Non-interactive: pipe the Console secret on stdin (off argv/history); the
+# publishable client key may stay on the flag.
+printf '%s' "$CONSOLE_KEY" | agent-statsig project add myproject --client-key "client-xxx"
 ```
+
+Precedence for the console key: `--console-key` flag > piped stdin > `--form`.
 
 ### 2. Test connectivity
 
@@ -154,8 +158,8 @@ All errors are written to stderr as structured JSON:
 ## Multi-Project Support
 
 ```bash
-agent-statsig project add production --console-key "console-xxx"
-agent-statsig project add staging --console-key "console-yyy"
+printf '%s' "$PROD_CONSOLE_KEY"    | agent-statsig project add production
+printf '%s' "$STAGING_CONSOLE_KEY" | agent-statsig project add staging
 agent-statsig project set-default staging
 agent-statsig -p production gate list
 ```

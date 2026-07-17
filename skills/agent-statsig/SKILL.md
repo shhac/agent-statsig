@@ -142,17 +142,24 @@ This catches type errors, missing required fields, and unknown fields locally.
 Rules can be scoped to environments (staging, production, etc.) using `--env`.
 A rule with no environments applies to all environments.
 
-## Project Setup
+## Project Setup — never paste the Console key
 
-If the project isn't configured yet:
+The **Console API key is a genuine server secret**. If a user pastes it into chat, **do not** put it into `--console-key`: the value would land in your context window, the command line (argv, shell history, `ps`/`/proc`), transcripts, and any downstream telemetry. The **Client SDK key** (`--client-key`) is *publishable* — it ships in client apps — so it is fine on a flag.
+
+Two safe ways to supply the Console key, in order of preference:
+
+**1. `--form` — preferred, interactive.** The user runs this in their own terminal; a native OS popup appears for them to type into:
 ```bash
-agent-statsig project add <alias> --form   # preferred: prompts for keys via a native OS dialog
+# User runs this — a native dialog (macOS osascript, Linux zenity/kdialog, Windows Win32) appears.
+agent-statsig project add <alias> --form
 agent-statsig project test
 ```
-`--form` opens a native dialog (macOS osascript, Linux zenity/kdialog, Windows Win32) for any key not passed on the command line. The user types the secret directly into the OS popup, so you (the agent) never see it — keep it off argv. Fully non-interactive alternative (keys land in argv/history):
+The user types the secret straight into the OS; you (the agent) only see a redacted JSON receipt. `--form` prompts for any key not already supplied. If it can't run (SSH/headless), the CLI errors with `fixable_by="human"` and a hint pointing at the stdin fallback — surface it, don't retry.
+
+**2. Piped stdin — non-interactive fallback for the Console key.** Keeps the secret off argv/history by reading it from a pipe:
 ```bash
-agent-statsig project add <alias> --console-key <key> [--client-key <key>]
+printf '%s' "$CONSOLE_KEY" | agent-statsig project add <alias> --client-key <clientkey>
 ```
-If `--form` can't run (SSH/headless), the CLI errors with `fixable_by="human"` and a hint pointing at the non-interactive fallback — surface it, don't retry.
+The console key comes from stdin; the publishable client key may stay on the flag. Precedence for the console key: `--console-key` flag > piped stdin > `--form`.
 
 Tell the user to get their Console API key from Statsig Console → Settings → Keys & Environments.
