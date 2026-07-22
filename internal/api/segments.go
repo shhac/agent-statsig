@@ -46,12 +46,6 @@ func (c *Client) ArchiveSegment(ctx context.Context, id string) error {
 	return err
 }
 
-func (c *Client) UpdateSegmentRules(ctx context.Context, id string, rules []Rule) error {
-	body := map[string]any{"rules": rules}
-	_, err := c.do(ctx, http.MethodPatch, fmt.Sprintf("%s/%s/rules", segmentsPath, id), body)
-	return err
-}
-
 func (c *Client) AddSegmentIDs(ctx context.Context, id string, ids []string) error {
 	body := map[string]any{"ids": ids}
 	_, err := c.do(ctx, http.MethodPost, fmt.Sprintf("%s/%s/ids", segmentsPath, id), body)

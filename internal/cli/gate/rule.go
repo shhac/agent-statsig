@@ -186,7 +186,6 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 	parent.AddCommand(cmd)
 }
 
-// FindRuleByID returns the rule with the given ID, or nil.
 func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var (
 		ruleID   string
@@ -224,6 +223,7 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 	parent.AddCommand(cmd)
 }
 
+// FindRuleByID returns the rule with the given ID, or nil.
 func FindRuleByID(rules []api.Rule, id string) *api.Rule {
 	for i := range rules {
 		if rules[i].ID == id {

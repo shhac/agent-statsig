@@ -18,10 +18,11 @@ import (
 	"github.com/shhac/agent-statsig/internal/output"
 )
 
-// SetupMockServer creates an httptest server and wires it into
-// shared.ClientFactory. Returns the server (for custom assertions) and cleans
-// up on test completion.
-func SetupMockServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
+// Run executes one CLI command against a mock API server wired into
+// shared.ClientFactory, returning captured stdout and stderr. register is the
+// entity package's Register function (e.g. gate.Register); errors are
+// rendered to stderr the way main does.
+func Run(t *testing.T, register func(*cobra.Command, func() *shared.GlobalFlags), handler http.HandlerFunc, args ...string) (string, string) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(func() {
@@ -31,15 +32,6 @@ func SetupMockServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 	shared.ClientFactory = func() (*api.Client, error) {
 		return api.NewTestClient(srv.URL, "test-key", "test-client-key"), nil
 	}
-	return srv
-}
-
-// Run executes one CLI command against a mock API server and returns captured
-// stdout and stderr. register is the entity package's Register function
-// (e.g. gate.Register); errors are rendered to stderr the way main does.
-func Run(t *testing.T, register func(*cobra.Command, func() *shared.GlobalFlags), handler http.HandlerFunc, args ...string) (string, string) {
-	t.Helper()
-	SetupMockServer(t, handler)
 
 	root := &cobra.Command{Use: "test", SilenceUsage: true, SilenceErrors: true}
 	register(root, func() *shared.GlobalFlags { return &shared.GlobalFlags{} })
