@@ -66,6 +66,8 @@ agent-statsig gate rule remove <name> --rule <id>
 
 # Modify configs (return values validated against schema)
 agent-statsig config rule add <name> --name "Rule" --criteria email --value user@co.com --return-value '{"key":"val"}'
+agent-statsig config schema get <name>
+agent-statsig config schema set <name> '{"type":"object","required":["key"]}'
 
 # Experiment lifecycle
 agent-statsig experiment start <name>
@@ -135,8 +137,14 @@ commands. Useful for diagnosing auth or routing issues.
 Default operator is `any` (case-insensitive match). Run `gate criteria` for the full list.
 
 ### Dynamic Config Schemas
-When a config has a JSON Schema, `--return-value` is validated before the API call.
-This catches type errors, missing required fields, and unknown fields locally.
+When a config has a JSON Schema, `--return-value` and `defaultValue` updates are
+validated before the API call. This catches type errors, missing required fields,
+and unknown fields locally.
+
+Set or remove the schema with `config schema set|clear <name>` (pass a plain JSON
+object; the CLI handles the API's string encoding). Setting a schema is blocked if
+existing values don't conform — fix the values first or pass `--force`. Full policy
+and examples: `agent-statsig config usage`.
 
 ### Environments
 Rules can be scoped to environments (staging, production, etc.) using `--env`.

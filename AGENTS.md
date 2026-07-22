@@ -31,6 +31,7 @@ internal/
     config/
       config.go                Dynamic config commands
       rule.go                  Config rule subcommands + ValidateAgainstSchema (santhosh-tekuri/jsonschema/v6)
+      schema.go                config schema get/set/clear + NormalizeSchema (API stores schemas string-form)
       usage.go                 Per-entity reference card
     experiment/
       experiment.go            Experiment commands incl. start, reset, abandon, ship

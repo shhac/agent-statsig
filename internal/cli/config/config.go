@@ -27,6 +27,7 @@ func Register(root *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerArchive(cfg, globals)
 	registerUpdate(cfg, globals)
 	registerRule(cfg, globals)
+	registerSchema(cfg, globals)
 	shared.RegisterUsage(cfg, "config", configUsage)
 	libcli.HandleUnknownCommand(cfg, "run 'agent-statsig config usage' to see the available commands")
 
@@ -143,6 +144,7 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var tags []string
+	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "update <name> <json>",
@@ -161,6 +163,9 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 					}
 					update["tags"] = tags
 				}
+				if err := validateUpdatePayload(ctx, client, args[0], update, force); err != nil {
+					return err
+				}
 				cfg, err := client.UpdateConfig(ctx, args[0], update)
 				if err != nil {
 					return err
@@ -171,5 +176,6 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 		},
 	}
 	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable, replaces existing tags)")
+	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of defaultValue/rules")
 	parent.AddCommand(cmd)
 }

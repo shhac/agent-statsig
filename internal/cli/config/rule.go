@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/cobra"
 
 	"github.com/shhac/agent-statsig/internal/api"
@@ -56,6 +55,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		environments []string
 		field        string
 		returnValue  string
+		force        bool
 	)
 
 	cmd := &cobra.Command{
@@ -100,7 +100,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 					return err
 				}
 
-				if rv != nil && configEntity.Schema != nil {
+				if rv != nil && !force {
 					if err := ValidateAgainstSchema(configEntity.Schema, rv); err != nil {
 						return err
 					}
@@ -127,6 +127,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 	cmd.Flags().StringArrayVar(&environments, "env", nil, "Environment (repeatable: --env staging --env production)")
 	cmd.Flags().StringVar(&field, "field", "", "Custom field name")
 	cmd.Flags().StringVar(&returnValue, "return-value", "", "JSON return value for this rule")
+	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of --return-value")
 	parent.AddCommand(cmd)
 }
 
@@ -136,6 +137,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 		passPercent float64
 		setPercent  bool
 		returnValue string
+		force       bool
 	)
 
 	cmd := &cobra.Command{
@@ -162,6 +164,16 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 						WithHint("Use --pass-percent or --return-value")
 				}
 
+				if rv, ok := update["returnValue"]; ok && !force {
+					configEntity, err := client.GetConfig(ctx, args[0])
+					if err != nil {
+						return err
+					}
+					if err := ValidateAgainstSchema(configEntity.Schema, rv); err != nil {
+						return err
+					}
+				}
+
 				if err := client.UpdateConfigRule(ctx, args[0], ruleID, update); err != nil {
 					return err
 				}
@@ -175,6 +187,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 0, "Pass percentage")
 	cmd.Flags().BoolVar(&setPercent, "set-percent", false, "Apply --pass-percent value")
 	cmd.Flags().StringVar(&returnValue, "return-value", "", "JSON return value")
+	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of --return-value")
 	parent.AddCommand(cmd)
 }
 
@@ -201,22 +214,16 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 	parent.AddCommand(cmd)
 }
 
-// ValidateAgainstSchema validates a value against a JSON Schema using full spec compliance.
+// ValidateAgainstSchema validates a value against a JSON Schema using full
+// spec compliance. Accepts both the API's string-form schema and object form
+// (see NormalizeSchema); a missing or malformed schema skips validation.
 func ValidateAgainstSchema(schema json.RawMessage, value any) error {
-	if len(schema) == 0 {
+	normalized, ok := NormalizeSchema(schema)
+	if !ok {
 		return nil
 	}
 
-	var schemaObj any
-	if err := json.Unmarshal(schema, &schemaObj); err != nil {
-		return nil
-	}
-
-	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource("schema.json", schemaObj); err != nil {
-		return nil
-	}
-	compiled, err := compiler.Compile("schema.json")
+	compiled, err := compileSchema(normalized)
 	if err != nil {
 		return nil
 	}

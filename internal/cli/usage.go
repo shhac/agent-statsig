@@ -48,6 +48,11 @@ COMMON WORKFLOWS
     config get <name>...             ← check schema + current rules
     config rule add <name> --name "Rule" --criteria email --value user@co.com --return-value '{"key":"val"}'
 
+  To enforce a JSON Schema on a config's values:
+    config schema get <name>         ← current schema (object form)
+    config schema set <name> '{"type":"object","required":["key"]}'
+    (details + conformance policy: config usage)
+
   To tag entities for organization:
     tag create "mobile" --description "Mobile features" --is-core
     gate create my_gate --tag mobile
