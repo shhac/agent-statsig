@@ -20,6 +20,7 @@ internal/
     usage.go                   Top-level LLM reference card (progressive disclosure → per-entity usage)
     shared/
       shared.go                WithClient (DI-ready via ClientFactory), project resolution, generics
+      rules.go                 MoveRule pure helper (rule reordering for gates + configs)
       testhelper.go            SetupMockServer for httptest-based CLI testing
     project/project.go         Project CRUD: add, update, remove, list, set-default, test
     gate/
@@ -32,6 +33,7 @@ internal/
       config.go                Dynamic config commands
       rule.go                  Config rule subcommands + ValidateAgainstSchema (santhosh-tekuri/jsonschema/v6)
       schema.go                config schema get/set/clear + NormalizeSchema (API stores schemas string-form)
+      value.go                 config value get/set (defaultValue)
       usage.go                 Per-entity reference card
     experiment/
       experiment.go            Experiment commands incl. start, reset, abandon, ship
