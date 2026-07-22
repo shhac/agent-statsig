@@ -147,17 +147,13 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 // when requested and writes the result, marking dry runs so agents know
 // nothing was persisted.
 func applyConfigUpdate(ctx context.Context, client *api.Client, g *shared.GlobalFlags, id string, update map[string]any, dryRun bool) error {
-	if dryRun {
-		cfg, err := client.UpdateConfigDryRun(ctx, id, update)
-		if err != nil {
-			return err
-		}
-		shared.WriteResource(map[string]any{"dryRun": true, "data": cfg}, g.Format)
-		return nil
-	}
-	cfg, err := client.UpdateConfig(ctx, id, update)
+	cfg, err := client.UpdateConfig(ctx, id, update, dryRun)
 	if err != nil {
 		return err
+	}
+	if dryRun {
+		shared.WriteResource(map[string]any{"dryRun": true, "data": cfg}, g.Format)
+		return nil
 	}
 	shared.WriteResource(cfg, g.Format)
 	return nil
