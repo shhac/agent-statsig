@@ -134,6 +134,34 @@ func TestSchemaSetRejectsInvalidSchema(t *testing.T) {
 	}
 }
 
+func TestSchemaSetRejectsOldDrafts(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
+	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config",
+		`{"$schema":"http://json-schema.org/draft-07/schema#","type":"object"}`)
+
+	var parsed map[string]any
+	json.Unmarshal([]byte(stderr), &parsed)
+	if parsed["fixable_by"] != "agent" {
+		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
+	}
+	if srv.PatchCount() != 0 {
+		t.Error("should not PATCH a non-2020-12 schema")
+	}
+}
+
+func TestSchemaSetAccepts202012SchemaURI(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
+	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config",
+		`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object"}`)
+
+	if stderr != "" {
+		t.Errorf("2020-12 $schema should be accepted: %s", stderr)
+	}
+	if srv.PatchCount() != 1 {
+		t.Errorf("PatchCount = %d", srv.PatchCount())
+	}
+}
+
 func TestSchemaSetRejectsNonObject(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
 	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", `"just a string"`)

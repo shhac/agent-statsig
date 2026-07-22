@@ -69,9 +69,14 @@ func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags
 					return agenterrors.Newf(agenterrors.FixableByAgent, "invalid schema JSON: %s", err).
 						WithHint("Provide the schema as a JSON object, e.g. '{\"type\":\"object\",\"required\":[\"theme\"]}'")
 				}
-				if _, ok := schemaVal.(map[string]any); !ok {
+				schemaMap, ok := schemaVal.(map[string]any)
+				if !ok {
 					return agenterrors.New("schema must be a JSON object", agenterrors.FixableByAgent).
 						WithHint("Pass an object-form JSON Schema; the CLI handles the API's string encoding for you")
+				}
+				if declared, ok := schemaMap["$schema"].(string); ok && !isDraft202012(declared) {
+					return agenterrors.Newf(agenterrors.FixableByAgent, "unsupported $schema %q: Statsig evaluates schemas as JSON Schema draft 2020-12 only", declared).
+						WithHint("Remove $schema, or set it to https://json-schema.org/draft/2020-12/schema. Older drafts are not a safe subset — e.g. draft-07 tuple-form 'items' means something different in 2020-12")
 				}
 				compiled, err := compileSchemaValue(schemaVal)
 				if err != nil {
@@ -149,6 +154,14 @@ func NormalizeSchema(schema json.RawMessage) (json.RawMessage, bool) {
 		return nil, false
 	}
 	return json.RawMessage(inner), true
+}
+
+// isDraft202012 reports whether a $schema URI declares JSON Schema draft
+// 2020-12 — the only draft Statsig evaluates.
+func isDraft202012(uri string) bool {
+	uri = strings.TrimSuffix(strings.TrimSpace(uri), "#")
+	return uri == "https://json-schema.org/draft/2020-12/schema" ||
+		uri == "http://json-schema.org/draft/2020-12/schema"
 }
 
 func compileSchema(raw json.RawMessage) (*jsonschema.Schema, error) {
