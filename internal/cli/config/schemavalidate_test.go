@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
 	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
@@ -43,7 +44,7 @@ func TestConfigUpdateValidatesRulesPayload(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "update", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config",
 		`{"rules":[{"name":"r","returnValue":{"theme":123}}]}`)
 
 	if stderr == "" {
@@ -53,7 +54,7 @@ func TestConfigUpdateValidatesRulesPayload(t *testing.T) {
 		t.Error("should not PATCH")
 	}
 
-	_, stderr = runConfigCmd(t, srv.Handler(), "config", "update", "my_config",
+	_, stderr = clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config",
 		`{"rules":[{"name":"r","returnValue":{"theme":"dark"}},{"name":"no-rv"}]}`)
 
 	if stderr != "" {
@@ -67,7 +68,7 @@ func TestConfigUpdateValidatesRulesPayload(t *testing.T) {
 func TestConfigUpdateValidatesAgainstIncomingSchema(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
 	update := fmt.Sprintf(`{"schema": %q, "defaultValue": {"theme":123}}`, themeSchema)
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "update", "my_config", update)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config", update)
 
 	if stderr == "" {
 		t.Error("defaultValue must be validated against the schema being set in the same update")
@@ -77,7 +78,7 @@ func TestConfigUpdateValidatesAgainstIncomingSchema(t *testing.T) {
 	}
 
 	update = fmt.Sprintf(`{"schema": %q, "defaultValue": {"theme":"dark"}}`, themeSchema)
-	_, stderr = runConfigCmd(t, srv.Handler(), "config", "update", "my_config", update)
+	_, stderr = clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config", update)
 
 	if stderr != "" {
 		t.Errorf("conforming defaultValue should pass against incoming schema: %s", stderr)
@@ -92,7 +93,7 @@ func TestConfigUpdateSchemaNullSkipsValidation(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "update", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config",
 		`{"schema": null, "defaultValue": {"theme":123}}`)
 
 	if stderr != "" {
@@ -108,7 +109,7 @@ func TestValueSetDryRunStillValidatesClientSide(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "value", "set", "my_config", `{"theme":123}`, "--dry-run")
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "value", "set", "my_config", `{"theme":123}`, "--dry-run")
 
 	if stderr == "" {
 		t.Error("client-side validation must run before a --dry-run request")
@@ -120,7 +121,7 @@ func TestValueSetDryRunStillValidatesClientSide(t *testing.T) {
 
 func TestSchemaSetDryRun(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", themeSchema, "--dry-run")
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema, "--dry-run")
 
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
@@ -135,7 +136,7 @@ func TestSchemaSetDryRun(t *testing.T) {
 
 func TestSchemaGetWithoutSchema(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	out, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "get", "my_config")
+	out, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "get", "my_config")
 
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)

@@ -17,6 +17,8 @@ func newTestServer(t *testing.T, handler http.HandlerFunc) *Client {
 	return NewTestClient(srv.URL, "test-console-key", "test-client-key")
 }
 
+// entityJSON/listJSON duplicate mockstatsig.Entity/List: package api cannot
+// import internal/mockstatsig (it imports api back).
 func entityJSON(data any) []byte {
 	b, _ := json.Marshal(map[string]any{"data": data})
 	return b

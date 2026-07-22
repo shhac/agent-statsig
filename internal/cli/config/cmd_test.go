@@ -1,70 +1,18 @@
 package config
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"os"
 	"testing"
 
-	"github.com/spf13/cobra"
-
 	"github.com/shhac/agent-statsig/internal/api"
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
+	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
-func globals() *shared.GlobalFlags {
-	return &shared.GlobalFlags{}
-}
-
-func runConfigCmd(t *testing.T, handler http.HandlerFunc, args ...string) (string, string) {
-	t.Helper()
-	shared.SetupMockServer(t, handler)
-
-	root := &cobra.Command{Use: "test", SilenceUsage: true, SilenceErrors: true}
-	Register(root, func() *shared.GlobalFlags { return globals() })
-
-	oldStdout := os.Stdout
-	oldStderr := os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout = wOut
-	os.Stderr = wErr
-
-	root.SetArgs(args)
-	if err := root.Execute(); err != nil {
-		output.WriteError(os.Stderr, err)
-	}
-
-	wOut.Close()
-	wErr.Close()
-	os.Stdout = oldStdout
-	os.Stderr = oldStderr
-
-	var outBuf, errBuf bytes.Buffer
-	outBuf.ReadFrom(rOut)
-	errBuf.ReadFrom(rErr)
-
-	return outBuf.String(), errBuf.String()
-}
-
-func entityJSON(data any) []byte {
-	b, _ := json.Marshal(map[string]any{"data": data})
-	return b
-}
-
-func listJSON(data any, total int) []byte {
-	b, _ := json.Marshal(map[string]any{
-		"data":       data,
-		"pagination": map[string]any{"itemsPerPage": 100, "pageNumber": 1, "totalItems": total},
-	})
-	return b
-}
-
 func TestConfigList(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(listJSON([]api.DynamicConfig{{Name: "config1"}, {Name: "config2"}}, 2))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.List([]api.DynamicConfig{{Name: "config1"}, {Name: "config2"}}, 2))
 	}, "config", "list")
 
 	if out == "" {
@@ -73,8 +21,8 @@ func TestConfigList(t *testing.T) {
 }
 
 func TestConfigGet(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON(api.DynamicConfig{Name: "my_config", IsEnabled: true}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity(api.DynamicConfig{Name: "my_config", IsEnabled: true}))
 	}, "config", "get", "my_config")
 
 	var parsed map[string]any
@@ -85,11 +33,11 @@ func TestConfigGet(t *testing.T) {
 }
 
 func TestConfigCreate(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("method = %s", r.Method)
 		}
-		w.Write(entityJSON(api.DynamicConfig{Name: "new_config"}))
+		w.Write(mockstatsig.Entity(api.DynamicConfig{Name: "new_config"}))
 	}, "config", "create", "new_config")
 
 	if out == "" {
@@ -98,7 +46,7 @@ func TestConfigCreate(t *testing.T) {
 }
 
 func TestConfigDelete(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"message":"ok"}`))
 	}, "config", "delete", "old_config")
 
@@ -110,7 +58,7 @@ func TestConfigDelete(t *testing.T) {
 }
 
 func TestConfigEnable(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"message":"ok"}`))
 	}, "config", "enable", "my_config")
 
@@ -122,8 +70,8 @@ func TestConfigEnable(t *testing.T) {
 }
 
 func TestConfigUpdate(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON(api.DynamicConfig{Name: "updated"}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity(api.DynamicConfig{Name: "updated"}))
 	}, "config", "update", "my_config", `{"description":"new"}`)
 
 	var parsed map[string]any
@@ -134,7 +82,7 @@ func TestConfigUpdate(t *testing.T) {
 }
 
 func TestConfigUpdateInvalidJSON(t *testing.T) {
-	_, stderr := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	_, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("should not reach server")
 	}, "config", "update", "my_config", "bad-json")
 
@@ -146,8 +94,8 @@ func TestConfigUpdateInvalidJSON(t *testing.T) {
 }
 
 func TestConfigRuleList(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON([]api.Rule{{ID: "r1", Name: "Default"}}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity([]api.Rule{{ID: "r1", Name: "Default"}}))
 	}, "config", "rule", "list", "my_config")
 
 	if out == "" {
@@ -156,15 +104,15 @@ func TestConfigRuleList(t *testing.T) {
 }
 
 func TestConfigRuleAddWithSchemaValidation(t *testing.T) {
-	out, _ := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			w.Write(entityJSON(api.DynamicConfig{
+			w.Write(mockstatsig.Entity(api.DynamicConfig{
 				Name:   "my_config",
-				Schema: json.RawMessage(`{"properties":{"theme":{"type":"string"}},"required":["theme"]}`),
+				Schema: mockstatsig.StringFormSchema(`{"properties":{"theme":{"type":"string"}},"required":["theme"]}`),
 			}))
 		case "PATCH":
-			w.Write(entityJSON(api.DynamicConfig{Name: "my_config"}))
+			w.Write(mockstatsig.Entity(api.DynamicConfig{Name: "my_config"}))
 		}
 	}, "config", "rule", "add", "my_config",
 		"--name", "Dark theme",
@@ -179,11 +127,11 @@ func TestConfigRuleAddWithSchemaValidation(t *testing.T) {
 }
 
 func TestConfigRuleAddSchemaViolation(t *testing.T) {
-	_, stderr := runConfigCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	_, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
-			w.Write(entityJSON(api.DynamicConfig{
+			w.Write(mockstatsig.Entity(api.DynamicConfig{
 				Name:   "my_config",
-				Schema: json.RawMessage(`{"properties":{"theme":{"type":"string"}},"required":["theme"]}`),
+				Schema: mockstatsig.StringFormSchema(`{"properties":{"theme":{"type":"string"}},"required":["theme"]}`),
 			}))
 			return
 		}

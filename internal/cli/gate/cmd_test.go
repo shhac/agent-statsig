@@ -1,77 +1,21 @@
 package gate
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"os"
 	"testing"
 
-	"github.com/spf13/cobra"
-
 	"github.com/shhac/agent-statsig/internal/api"
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
+	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
-func globals() *shared.GlobalFlags {
-	return &shared.GlobalFlags{}
-}
-
-func runGateCmd(t *testing.T, handler http.HandlerFunc, args ...string) (string, string) {
-	t.Helper()
-	shared.SetupMockServer(t, handler)
-
-	root := &cobra.Command{Use: "test", SilenceUsage: true, SilenceErrors: true}
-	Register(root, func() *shared.GlobalFlags { return globals() })
-
-	var stdout, stderr bytes.Buffer
-	root.SetOut(&stdout)
-	root.SetErr(&stderr)
-
-	oldStdout := os.Stdout
-	oldStderr := os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout = wOut
-	os.Stderr = wErr
-
-	root.SetArgs(args)
-	if err := root.Execute(); err != nil {
-		output.WriteError(os.Stderr, err)
-	}
-
-	wOut.Close()
-	wErr.Close()
-	os.Stdout = oldStdout
-	os.Stderr = oldStderr
-
-	var outBuf, errBuf bytes.Buffer
-	outBuf.ReadFrom(rOut)
-	errBuf.ReadFrom(rErr)
-
-	return outBuf.String(), errBuf.String()
-}
-
-func entityJSON(data any) []byte {
-	b, _ := json.Marshal(map[string]any{"data": data})
-	return b
-}
-
-func listJSON(data any, total int) []byte {
-	b, _ := json.Marshal(map[string]any{
-		"data":       data,
-		"pagination": map[string]any{"itemsPerPage": 100, "pageNumber": 1, "totalItems": total},
-	})
-	return b
-}
-
 func TestGateList(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/console/v1/gates" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		w.Write(listJSON([]api.Gate{{Name: "gate1"}, {Name: "gate2"}}, 2))
+		w.Write(mockstatsig.List([]api.Gate{{Name: "gate1"}, {Name: "gate2"}}, 2))
 	}, "gate", "list")
 
 	if out == "" {
@@ -80,11 +24,11 @@ func TestGateList(t *testing.T) {
 }
 
 func TestGateGet(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/console/v1/gates/my_gate" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		w.Write(entityJSON(api.Gate{Name: "my_gate", IsEnabled: true}))
+		w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate", IsEnabled: true}))
 	}, "gate", "get", "my_gate")
 
 	var parsed map[string]any
@@ -95,7 +39,7 @@ func TestGateGet(t *testing.T) {
 }
 
 func TestGateCreate(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("method = %s", r.Method)
 		}
@@ -104,7 +48,7 @@ func TestGateCreate(t *testing.T) {
 		if body["name"] != "new_gate" {
 			t.Errorf("name = %v", body["name"])
 		}
-		w.Write(entityJSON(api.Gate{Name: "new_gate"}))
+		w.Write(mockstatsig.Entity(api.Gate{Name: "new_gate"}))
 	}, "gate", "create", "new_gate", "--description", "A test gate")
 
 	if out == "" {
@@ -113,7 +57,7 @@ func TestGateCreate(t *testing.T) {
 }
 
 func TestGateDelete(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "DELETE" {
 			t.Errorf("method = %s", r.Method)
 		}
@@ -128,7 +72,7 @@ func TestGateDelete(t *testing.T) {
 }
 
 func TestGateEnable(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/console/v1/gates/my_gate/enable" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
@@ -146,7 +90,7 @@ func TestGateEnable(t *testing.T) {
 }
 
 func TestGateDisable(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"message":"ok"}`))
 	}, "gate", "disable", "my_gate")
 
@@ -158,11 +102,11 @@ func TestGateDisable(t *testing.T) {
 }
 
 func TestGateUpdate(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PATCH" {
 			t.Errorf("method = %s", r.Method)
 		}
-		w.Write(entityJSON(api.Gate{Name: "updated"}))
+		w.Write(mockstatsig.Entity(api.Gate{Name: "updated"}))
 	}, "gate", "update", "my_gate", `{"description":"new"}`)
 
 	var parsed map[string]any
@@ -173,7 +117,7 @@ func TestGateUpdate(t *testing.T) {
 }
 
 func TestGateUpdateInvalidJSON(t *testing.T) {
-	_, stderr := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	_, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("should not reach server with invalid JSON")
 	}, "gate", "update", "my_gate", "not-json")
 
@@ -186,15 +130,15 @@ func TestGateUpdateInvalidJSON(t *testing.T) {
 
 func TestGateRolloutNew(t *testing.T) {
 	callCount := 0
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		switch r.Method {
 		case "GET":
-			w.Write(entityJSON(api.Gate{Name: "my_gate", Rules: []api.Rule{}}))
+			w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate", Rules: []api.Rule{}}))
 		case "POST":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
-			w.Write(entityJSON(api.Rule{Name: "Everyone"}))
+			w.Write(mockstatsig.Entity(api.Rule{Name: "Everyone"}))
 		default:
 			t.Errorf("unexpected method %s", r.Method)
 		}
@@ -208,10 +152,10 @@ func TestGateRolloutNew(t *testing.T) {
 }
 
 func TestGateRolloutExisting(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			w.Write(entityJSON(api.Gate{
+			w.Write(mockstatsig.Entity(api.Gate{
 				Name: "my_gate",
 				Rules: []api.Rule{{
 					ID:         "r1",
@@ -232,8 +176,8 @@ func TestGateRolloutExisting(t *testing.T) {
 }
 
 func TestGateRuleList(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON([]api.Rule{{ID: "r1", Name: "Email rule"}}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity([]api.Rule{{ID: "r1", Name: "Email rule"}}))
 	}, "gate", "rule", "list", "my_gate")
 
 	if out == "" {
@@ -242,9 +186,9 @@ func TestGateRuleList(t *testing.T) {
 }
 
 func TestGateRuleAdd(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			w.Write(entityJSON(api.Rule{ID: "new-rule", Name: "Team"}))
+			w.Write(mockstatsig.Entity(api.Rule{ID: "new-rule", Name: "Team"}))
 			return
 		}
 		t.Errorf("unexpected method %s", r.Method)
@@ -261,7 +205,7 @@ func TestGateRuleAdd(t *testing.T) {
 }
 
 func TestGateRuleAddInvalidCriteria(t *testing.T) {
-	_, stderr := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	_, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("should not reach server with invalid criteria")
 	}, "gate", "rule", "add", "my_gate",
 		"--name", "Bad",
@@ -275,24 +219,10 @@ func TestGateRuleAddInvalidCriteria(t *testing.T) {
 }
 
 func TestGateCriteria(t *testing.T) {
-	root := &cobra.Command{Use: "test"}
-	Register(root, func() *shared.GlobalFlags { return globals() })
-
-	oldStdout := os.Stdout
-	rOut, wOut, _ := os.Pipe()
-	os.Stdout = wOut
-
-	root.SetArgs([]string{"gate", "criteria"})
-	root.Execute()
-
-	wOut.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	buf.ReadFrom(rOut)
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {}, "gate", "criteria")
 
 	var parsed map[string]any
-	json.Unmarshal(buf.Bytes(), &parsed)
+	json.Unmarshal([]byte(out), &parsed)
 	criteria := parsed["criteria"].([]any)
 	if len(criteria) != 25 {
 		t.Errorf("expected 25 criteria, got %d", len(criteria))
@@ -300,8 +230,8 @@ func TestGateCriteria(t *testing.T) {
 }
 
 func TestGateListWithSearch(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(listJSON([]api.Gate{
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.List([]api.Gate{
 			{Name: "feature_onboarding", Description: "Onboarding"},
 			{Name: "feature_checkout", Description: "Checkout"},
 			{Name: "debug_tool", Description: "Debug"},
@@ -314,9 +244,9 @@ func TestGateListWithSearch(t *testing.T) {
 }
 
 func TestGateCreateWithValidTag(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/console/v1/tags" {
-			w.Write(listJSON([]api.Tag{{Name: "mobile"}}, 1))
+			w.Write(mockstatsig.List([]api.Tag{{Name: "mobile"}}, 1))
 			return
 		}
 		var body map[string]any
@@ -325,7 +255,7 @@ func TestGateCreateWithValidTag(t *testing.T) {
 		if len(tags) != 1 || tags[0] != "mobile" {
 			t.Errorf("tags = %v", tags)
 		}
-		w.Write(entityJSON(api.Gate{Name: "my_gate", Tags: []string{"mobile"}}))
+		w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate", Tags: []string{"mobile"}}))
 	}, "gate", "create", "my_gate", "--tag", "mobile")
 
 	if out == "" {
@@ -334,9 +264,9 @@ func TestGateCreateWithValidTag(t *testing.T) {
 }
 
 func TestGateCreateWithInvalidTag(t *testing.T) {
-	_, stderr := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	_, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/console/v1/tags" {
-			w.Write(listJSON([]api.Tag{{Name: "existing"}}, 1))
+			w.Write(mockstatsig.List([]api.Tag{{Name: "existing"}}, 1))
 			return
 		}
 		t.Error("should not reach gate create endpoint")
@@ -350,7 +280,7 @@ func TestGateCreateWithInvalidTag(t *testing.T) {
 }
 
 func TestGateArchive(t *testing.T) {
-	out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/console/v1/gates/old_gate/archive" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
@@ -366,15 +296,15 @@ func TestGateArchive(t *testing.T) {
 
 func TestGateRuleMove(t *testing.T) {
 	var patched map[string]any
-	out, stderr := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			w.Write(entityJSON(api.Gate{Name: "my_gate", Rules: []api.Rule{
+			w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate", Rules: []api.Rule{
 				{ID: "r1", Name: "first"}, {ID: "r2", Name: "second"},
 			}}))
 		case "PATCH":
 			json.NewDecoder(r.Body).Decode(&patched)
-			w.Write(entityJSON(api.Gate{Name: "my_gate"}))
+			w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate"}))
 		}
 	}, "gate", "rule", "move", "my_gate", "--rule", "r2", "--position", "top")
 

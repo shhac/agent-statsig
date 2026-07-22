@@ -1,70 +1,18 @@
 package experiment
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"os"
 	"testing"
 
-	"github.com/spf13/cobra"
-
 	"github.com/shhac/agent-statsig/internal/api"
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
+	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
-func globals() *shared.GlobalFlags {
-	return &shared.GlobalFlags{}
-}
-
-func runExpCmd(t *testing.T, handler http.HandlerFunc, args ...string) (string, string) {
-	t.Helper()
-	shared.SetupMockServer(t, handler)
-
-	root := &cobra.Command{Use: "test", SilenceUsage: true, SilenceErrors: true}
-	Register(root, func() *shared.GlobalFlags { return globals() })
-
-	oldStdout := os.Stdout
-	oldStderr := os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout = wOut
-	os.Stderr = wErr
-
-	root.SetArgs(args)
-	if err := root.Execute(); err != nil {
-		output.WriteError(os.Stderr, err)
-	}
-
-	wOut.Close()
-	wErr.Close()
-	os.Stdout = oldStdout
-	os.Stderr = oldStderr
-
-	var outBuf, errBuf bytes.Buffer
-	outBuf.ReadFrom(rOut)
-	errBuf.ReadFrom(rErr)
-
-	return outBuf.String(), errBuf.String()
-}
-
-func entityJSON(data any) []byte {
-	b, _ := json.Marshal(map[string]any{"data": data})
-	return b
-}
-
-func listJSON(data any, total int) []byte {
-	b, _ := json.Marshal(map[string]any{
-		"data":       data,
-		"pagination": map[string]any{"itemsPerPage": 100, "pageNumber": 1, "totalItems": total},
-	})
-	return b
-}
-
 func TestExperimentList(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(listJSON([]api.Experiment{{Name: "exp1"}, {Name: "exp2"}}, 2))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.List([]api.Experiment{{Name: "exp1"}, {Name: "exp2"}}, 2))
 	}, "experiment", "list")
 
 	if out == "" {
@@ -73,8 +21,8 @@ func TestExperimentList(t *testing.T) {
 }
 
 func TestExperimentGet(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON(api.Experiment{Name: "my_exp", Status: "active"}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity(api.Experiment{Name: "my_exp", Status: "active"}))
 	}, "experiment", "get", "my_exp")
 
 	var parsed map[string]any
@@ -85,7 +33,7 @@ func TestExperimentGet(t *testing.T) {
 }
 
 func TestExperimentCreate(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("method = %s", r.Method)
 		}
@@ -94,7 +42,7 @@ func TestExperimentCreate(t *testing.T) {
 		if body["name"] != "new_exp" {
 			t.Errorf("name = %v", body["name"])
 		}
-		w.Write(entityJSON(api.Experiment{Name: "new_exp"}))
+		w.Write(mockstatsig.Entity(api.Experiment{Name: "new_exp"}))
 	}, "experiment", "create", "new_exp", "--description", "Test experiment")
 
 	if out == "" {
@@ -103,14 +51,14 @@ func TestExperimentCreate(t *testing.T) {
 }
 
 func TestExperimentCreateWithGroups(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		json.NewDecoder(r.Body).Decode(&body)
 		groups := body["groups"].([]any)
 		if len(groups) != 2 {
 			t.Errorf("expected 2 groups, got %d", len(groups))
 		}
-		w.Write(entityJSON(api.Experiment{Name: "new_exp"}))
+		w.Write(mockstatsig.Entity(api.Experiment{Name: "new_exp"}))
 	}, "experiment", "create", "new_exp",
 		"--groups", `[{"name":"control","size":50},{"name":"test","size":50}]`)
 
@@ -120,7 +68,7 @@ func TestExperimentCreateWithGroups(t *testing.T) {
 }
 
 func TestExperimentStart(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/console/v1/experiments/my_exp/start" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
@@ -135,7 +83,7 @@ func TestExperimentStart(t *testing.T) {
 }
 
 func TestExperimentAbandon(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		json.NewDecoder(r.Body).Decode(&body)
 		if body["decisionReason"] != "not useful" {
@@ -152,7 +100,7 @@ func TestExperimentAbandon(t *testing.T) {
 }
 
 func TestExperimentShip(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		json.NewDecoder(r.Body).Decode(&body)
 		if body["id"] != "group-1" {
@@ -169,7 +117,7 @@ func TestExperimentShip(t *testing.T) {
 }
 
 func TestExperimentDelete(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"message":"ok"}`))
 	}, "experiment", "delete", "old_exp")
 
@@ -181,8 +129,8 @@ func TestExperimentDelete(t *testing.T) {
 }
 
 func TestExperimentUpdate(t *testing.T) {
-	out, _ := runExpCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON(api.Experiment{Name: "updated"}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity(api.Experiment{Name: "updated"}))
 	}, "experiment", "update", "my_exp", `{"description":"new"}`)
 
 	var parsed map[string]any

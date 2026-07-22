@@ -1,70 +1,18 @@
 package segment
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"os"
 	"testing"
 
-	"github.com/spf13/cobra"
-
 	"github.com/shhac/agent-statsig/internal/api"
-	"github.com/shhac/agent-statsig/internal/cli/shared"
-	"github.com/shhac/agent-statsig/internal/output"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
+	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
-func globals() *shared.GlobalFlags {
-	return &shared.GlobalFlags{}
-}
-
-func runSegmentCmd(t *testing.T, handler http.HandlerFunc, args ...string) (string, string) {
-	t.Helper()
-	shared.SetupMockServer(t, handler)
-
-	root := &cobra.Command{Use: "test", SilenceUsage: true, SilenceErrors: true}
-	Register(root, func() *shared.GlobalFlags { return globals() })
-
-	oldStdout := os.Stdout
-	oldStderr := os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout = wOut
-	os.Stderr = wErr
-
-	root.SetArgs(args)
-	if err := root.Execute(); err != nil {
-		output.WriteError(os.Stderr, err)
-	}
-
-	wOut.Close()
-	wErr.Close()
-	os.Stdout = oldStdout
-	os.Stderr = oldStderr
-
-	var outBuf, errBuf bytes.Buffer
-	outBuf.ReadFrom(rOut)
-	errBuf.ReadFrom(rErr)
-
-	return outBuf.String(), errBuf.String()
-}
-
-func entityJSON(data any) []byte {
-	b, _ := json.Marshal(map[string]any{"data": data})
-	return b
-}
-
-func listJSON(data any, total int) []byte {
-	b, _ := json.Marshal(map[string]any{
-		"data":       data,
-		"pagination": map[string]any{"itemsPerPage": 100, "pageNumber": 1, "totalItems": total},
-	})
-	return b
-}
-
 func TestSegmentList(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(listJSON([]api.Segment{{Name: "seg1"}, {Name: "seg2"}}, 2))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.List([]api.Segment{{Name: "seg1"}, {Name: "seg2"}}, 2))
 	}, "segment", "list")
 
 	if out == "" {
@@ -73,8 +21,8 @@ func TestSegmentList(t *testing.T) {
 }
 
 func TestSegmentGet(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON(api.Segment{Name: "internal_team", Type: "id_list"}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity(api.Segment{Name: "internal_team", Type: "id_list"}))
 	}, "segment", "get", "internal_team")
 
 	var parsed map[string]any
@@ -85,11 +33,11 @@ func TestSegmentGet(t *testing.T) {
 }
 
 func TestSegmentCreate(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("method = %s", r.Method)
 		}
-		w.Write(entityJSON(api.Segment{Name: "new_seg"}))
+		w.Write(mockstatsig.Entity(api.Segment{Name: "new_seg"}))
 	}, "segment", "create", "new_seg", "--type", "id_list")
 
 	if out == "" {
@@ -98,7 +46,7 @@ func TestSegmentCreate(t *testing.T) {
 }
 
 func TestSegmentDelete(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"message":"ok"}`))
 	}, "segment", "delete", "old_seg")
 
@@ -110,7 +58,7 @@ func TestSegmentDelete(t *testing.T) {
 }
 
 func TestSegmentArchive(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"message":"ok"}`))
 	}, "segment", "archive", "old_seg")
 
@@ -122,8 +70,8 @@ func TestSegmentArchive(t *testing.T) {
 }
 
 func TestSegmentIDsGet(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(entityJSON([]string{"user1", "user2"}))
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mockstatsig.Entity([]string{"user1", "user2"}))
 	}, "segment", "ids", "get", "my_seg")
 
 	if out == "" {
@@ -132,7 +80,7 @@ func TestSegmentIDsGet(t *testing.T) {
 }
 
 func TestSegmentIDsAdd(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("method = %s", r.Method)
 		}
@@ -153,7 +101,7 @@ func TestSegmentIDsAdd(t *testing.T) {
 }
 
 func TestSegmentIDsRemove(t *testing.T) {
-	out, _ := runSegmentCmd(t, func(w http.ResponseWriter, r *http.Request) {
+	out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "DELETE" {
 			t.Errorf("method = %s", r.Method)
 		}

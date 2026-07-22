@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
 	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
 func TestDryRunDoesNotPersist(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	out, stderr := runConfigCmd(t, srv.Handler(), "config", "value", "set", "my_config", `{"theme":"dark"}`, "--dry-run")
+	out, stderr := clitest.Run(t, Register, srv.Handler(), "config", "value", "set", "my_config", `{"theme":"dark"}`, "--dry-run")
 
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
@@ -31,12 +32,12 @@ func TestDryRunDoesNotPersist(t *testing.T) {
 func TestDryRunOnUpdateAndRuleAdd(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
 
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "update", "my_config", `{"description":"x"}`, "--dry-run")
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config", `{"description":"x"}`, "--dry-run")
 	if stderr != "" {
 		t.Fatalf("update --dry-run: %s", stderr)
 	}
 
-	_, stderr = runConfigCmd(t, srv.Handler(), "config", "rule", "add", "my_config",
+	_, stderr = clitest.Run(t, Register, srv.Handler(), "config", "rule", "add", "my_config",
 		"--name", "R", "--criteria", "public", "--return-value", `{"a":1}`, "--dry-run")
 	if stderr != "" {
 		t.Fatalf("rule add --dry-run: %s", stderr)

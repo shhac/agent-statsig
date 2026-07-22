@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
+	"github.com/shhac/agent-statsig/internal/cli/clitest"
 	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
@@ -15,7 +16,7 @@ func TestSchemaGetUnwrapsStringForm(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	out, _ := runConfigCmd(t, srv.Handler(), "config", "schema", "get", "my_config")
+	out, _ := clitest.Run(t, Register, srv.Handler(), "config", "schema", "get", "my_config")
 
 	var parsed map[string]any
 	json.Unmarshal([]byte(out), &parsed)
@@ -30,7 +31,7 @@ func TestSchemaGetUnwrapsStringForm(t *testing.T) {
 
 func TestSchemaSetHappyPath(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	out, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
+	out, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
 
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
@@ -64,7 +65,7 @@ func TestSchemaSetBlockedByNonConformingValues(t *testing.T) {
 			{ID: "r1", Name: "Bad rule", ReturnValue: map[string]any{"unknown": true}},
 		},
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
 
 	var parsed map[string]any
 	json.Unmarshal([]byte(stderr), &parsed)
@@ -81,7 +82,7 @@ func TestSchemaSetEmptyObjectDefaultBlockedByRequired(t *testing.T) {
 		Name:         "my_config",
 		DefaultValue: json.RawMessage(`{}`),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
 
 	if stderr == "" {
 		t.Error("empty-object defaultValue should fail a schema with required fields")
@@ -96,7 +97,7 @@ func TestSchemaSetNullDefaultSkipsValidation(t *testing.T) {
 		Name:         "my_config",
 		DefaultValue: json.RawMessage(`null`),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
 
 	if stderr != "" {
 		t.Errorf("absent/null defaultValue should not block schema set: %s", stderr)
@@ -111,7 +112,7 @@ func TestSchemaSetForceOverridesViolations(t *testing.T) {
 		Name:         "my_config",
 		DefaultValue: json.RawMessage(`{"theme":123}`),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", themeSchema, "--force")
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema, "--force")
 
 	if stderr != "" {
 		t.Errorf("--force should skip validation: %s", stderr)
@@ -123,7 +124,7 @@ func TestSchemaSetForceOverridesViolations(t *testing.T) {
 
 func TestSchemaSetRejectsInvalidSchema(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", `{"type":"nonsense"}`)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", `{"type":"nonsense"}`)
 
 	var parsed map[string]any
 	json.Unmarshal([]byte(stderr), &parsed)
@@ -137,7 +138,7 @@ func TestSchemaSetRejectsInvalidSchema(t *testing.T) {
 
 func TestSchemaSetRejectsOldDrafts(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config",
 		`{"$schema":"http://json-schema.org/draft-07/schema#","type":"object"}`)
 
 	var parsed map[string]any
@@ -152,7 +153,7 @@ func TestSchemaSetRejectsOldDrafts(t *testing.T) {
 
 func TestSchemaSetAccepts202012SchemaURI(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config",
 		`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object"}`)
 
 	if stderr != "" {
@@ -165,7 +166,7 @@ func TestSchemaSetAccepts202012SchemaURI(t *testing.T) {
 
 func TestSchemaSetRejectsNonObject(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "set", "my_config", `"just a string"`)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", `"just a string"`)
 
 	if stderr == "" {
 		t.Error("non-object schema should be rejected")
@@ -180,7 +181,7 @@ func TestSchemaClear(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "schema", "clear", "my_config")
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "clear", "my_config")
 
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
@@ -202,7 +203,7 @@ func TestRuleAddValidatesStringFormSchema(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "rule", "add", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "add", "my_config",
 		"--name", "Bad",
 		"--criteria", "email",
 		"--value", "user@test.com",
@@ -223,7 +224,7 @@ func TestRuleUpdateValidatesReturnValue(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "rule", "update", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "update", "my_config",
 		"--rule", "r1", "--return-value", `{"theme":123}`)
 
 	if stderr == "" {
@@ -233,7 +234,7 @@ func TestRuleUpdateValidatesReturnValue(t *testing.T) {
 		t.Error("should not PATCH the rule")
 	}
 
-	_, stderr = runConfigCmd(t, srv.Handler(), "config", "rule", "update", "my_config",
+	_, stderr = clitest.Run(t, Register, srv.Handler(), "config", "rule", "update", "my_config",
 		"--rule", "r1", "--return-value", `{"theme":"dark"}`)
 
 	if stderr != "" {
@@ -249,7 +250,7 @@ func TestConfigUpdateValidatesDefaultValue(t *testing.T) {
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "update", "my_config", `{"defaultValue":{"theme":123}}`)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config", `{"defaultValue":{"theme":123}}`)
 
 	if stderr == "" {
 		t.Error("non-conforming defaultValue should be blocked")
@@ -258,7 +259,7 @@ func TestConfigUpdateValidatesDefaultValue(t *testing.T) {
 		t.Error("should not PATCH")
 	}
 
-	_, stderr = runConfigCmd(t, srv.Handler(), "config", "update", "my_config", `{"defaultValue":{"theme":123}}`, "--force")
+	_, stderr = clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config", `{"defaultValue":{"theme":123}}`, "--force")
 
 	if stderr != "" {
 		t.Errorf("--force should skip validation: %s", stderr)
@@ -270,7 +271,7 @@ func TestConfigUpdateValidatesDefaultValue(t *testing.T) {
 
 func TestConfigUpdateRejectsObjectFormSchema(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "update", "my_config", `{"schema":{"type":"object"}}`)
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "update", "my_config", `{"schema":{"type":"object"}}`)
 
 	var parsed map[string]any
 	json.Unmarshal([]byte(stderr), &parsed)
@@ -300,7 +301,7 @@ func TestConfigRuleMove(t *testing.T) {
 			{ID: "r1", Name: "first"}, {ID: "r2", Name: "second"}, {ID: "r3", Name: "third"},
 		},
 	})
-	_, stderr := runConfigCmd(t, srv.Handler(), "config", "rule", "move", "my_config",
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "move", "my_config",
 		"--rule", "r3", "--position", "1")
 
 	if stderr != "" {
