@@ -363,3 +363,33 @@ func TestGateArchive(t *testing.T) {
 		t.Errorf("archived = %v", parsed["archived"])
 	}
 }
+
+func TestGateRuleMove(t *testing.T) {
+	var patched map[string]any
+	out, stderr := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write(entityJSON(api.Gate{Name: "my_gate", Rules: []api.Rule{
+				{ID: "r1", Name: "first"}, {ID: "r2", Name: "second"},
+			}}))
+		case "PATCH":
+			json.NewDecoder(r.Body).Decode(&patched)
+			w.Write(entityJSON(api.Gate{Name: "my_gate"}))
+		}
+	}, "gate", "rule", "move", "my_gate", "--rule", "r2", "--position", "top")
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	if out == "" {
+		t.Error("expected output")
+	}
+	rules, ok := patched["rules"].([]any)
+	if !ok || len(rules) != 2 {
+		t.Fatalf("patched rules = %v", patched["rules"])
+	}
+	first, _ := rules[0].(map[string]any)
+	if first["id"] != "r2" {
+		t.Errorf("first rule after move = %v", first["id"])
+	}
+}

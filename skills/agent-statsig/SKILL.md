@@ -67,6 +67,7 @@ agent-statsig gate rollout <name> --percent 50
 agent-statsig gate rule add <name> --name "Rule" --criteria email --value user@co.com
 agent-statsig gate rule update <name> --rule <id> --add-value new@co.com
 agent-statsig gate rule remove <name> --rule <id>
+agent-statsig gate rule move <name> --rule <id> --position <n|top|bottom>   # also on config rule
 
 # Modify configs (return values validated against schema)
 agent-statsig config rule add <name> --name "Rule" --criteria email --value user@co.com --return-value '{"key":"val"}'

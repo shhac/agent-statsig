@@ -290,3 +290,27 @@ func TestValidateAgainstSchemaStringForm(t *testing.T) {
 		t.Error("non-conforming value should fail against string-form schema")
 	}
 }
+
+func TestConfigRuleMove(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
+		Name: "my_config",
+		Rules: []api.Rule{
+			{ID: "r1", Name: "first"}, {ID: "r2", Name: "second"}, {ID: "r3", Name: "third"},
+		},
+	})
+	_, stderr := runConfigCmd(t, srv.Handler(), "config", "rule", "move", "my_config",
+		"--rule", "r3", "--position", "1")
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	patch := srv.LastPatch()
+	rules, ok := patch["rules"].([]any)
+	if !ok || len(rules) != 3 {
+		t.Fatalf("patched rules = %v", patch["rules"])
+	}
+	first, _ := rules[0].(map[string]any)
+	if first["id"] != "r3" {
+		t.Errorf("first rule after move = %v", first["id"])
+	}
+}

@@ -44,6 +44,9 @@ RULE MANAGEMENT
 
   gate rule remove <gate> --rule <rule-id>
 
+  gate rule move <gate> --rule <rule-id> --position <n|top|bottom>
+    Rules evaluate top-to-bottom (first match wins); position is 1-based.
+
 EXAMPLES
   # Target an email domain in staging
   gate rule add my_gate \

@@ -20,6 +20,7 @@ func registerRule(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerRuleAdd(rule, globals)
 	registerRuleUpdate(rule, globals)
 	registerRuleRemove(rule, globals)
+	registerRuleMove(rule, globals)
 
 	parent.AddCommand(rule)
 }
@@ -186,6 +187,43 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 }
 
 // FindRuleByID returns the rule with the given ID, or nil.
+func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
+	var (
+		ruleID   string
+		position string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "move <gate>",
+		Short: "Move a rule to a new position (rules evaluate top-to-bottom, first match wins)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			g := globals()
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
+				gateEntity, err := client.GetGate(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				rules, err := shared.MoveRule(gateEntity.Rules, ruleID, position)
+				if err != nil {
+					return err
+				}
+				updated, err := client.UpdateGate(ctx, args[0], map[string]any{"rules": rules})
+				if err != nil {
+					return err
+				}
+				shared.WriteResource(updated, g.Format)
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID (or unique name) to move")
+	cmd.MarkFlagRequired("rule")
+	cmd.Flags().StringVar(&position, "position", "", "Target position: 1-based number, 'top', or 'bottom'")
+	cmd.MarkFlagRequired("position")
+	parent.AddCommand(cmd)
+}
+
 func FindRuleByID(rules []api.Rule, id string) *api.Rule {
 	for i := range rules {
 		if rules[i].ID == id {

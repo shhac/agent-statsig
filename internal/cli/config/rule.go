@@ -21,6 +21,7 @@ func registerRule(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	registerRuleAdd(rule, globals)
 	registerRuleUpdate(rule, globals)
 	registerRuleRemove(rule, globals)
+	registerRuleMove(rule, globals)
 
 	parent.AddCommand(rule)
 }
@@ -207,6 +208,40 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 	}
 	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID to remove")
 	cmd.MarkFlagRequired("rule")
+	parent.AddCommand(cmd)
+}
+
+func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
+	var (
+		ruleID   string
+		position string
+		dryRun   bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "move <config>",
+		Short: "Move a rule to a new position (rules evaluate top-to-bottom, first match wins)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			g := globals()
+			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
+				configEntity, err := client.GetConfig(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				rules, err := shared.MoveRule(configEntity.Rules, ruleID, position)
+				if err != nil {
+					return err
+				}
+				return applyConfigUpdate(ctx, client, g, args[0], map[string]any{"rules": rules}, dryRun)
+			})
+		},
+	}
+	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID (or unique name) to move")
+	cmd.MarkFlagRequired("rule")
+	cmd.Flags().StringVar(&position, "position", "", "Target position: 1-based number, 'top', or 'bottom'")
+	cmd.MarkFlagRequired("position")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }
 

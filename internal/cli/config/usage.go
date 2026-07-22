@@ -48,6 +48,9 @@ RULE MANAGEMENT
 
   config rule remove <config> --rule <rule-id>
 
+  config rule move <config> --rule <rule-id> --position <n|top|bottom>
+    Rules evaluate top-to-bottom (first match wins); position is 1-based.
+
 EXAMPLES
   # Add a rule returning custom values for internal users
   config rule add my_config \
