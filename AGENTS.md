@@ -46,6 +46,7 @@ internal/
     credential.go              Credential storage (index file + keychain integration)
     keychain.go                macOS Keychain operations (keychainStore/Get/Delete)
   errors/errors.go             APIError type with fixable_by classification
+  mockstatsig/mockstatsig.go   Realistic API fixtures + stateful ConfigServer for tests (string-form schemas)
   output/output.go             JSON/YAML/NDJSON formatters, WriteError, PrintJSON
 skills/
   agent-statsig/SKILL.md       Claude Code skill definition
