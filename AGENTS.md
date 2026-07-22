@@ -19,9 +19,13 @@ internal/
     root.go                    Global flags (--project, --format, --timeout), command registration
     usage.go                   Top-level LLM reference card (progressive disclosure → per-entity usage)
     shared/
-      shared.go                WithClient (DI-ready via ClientFactory), project resolution, generics
+      shared.go                GlobalFlags (persistent flag carrier)
+      client.go                WithClient, ClientFactory DI seam, project/credential resolution
+      register.go              GetEntities + RegisterAction command scaffolding
+      validate.go              ValidateTags, ValidateCriteria, ParseJSONArg
+      write.go                 WriteResource, WritePaginatedList output writers
+      slices.go                Generic slice/map helpers
       rules.go                 MoveRule pure helper (rule reordering for gates + configs)
-      testhelper.go            SetupMockServer for httptest-based CLI testing
     project/project.go         Project CRUD: add, update, remove, list, set-default, test
     gate/
       gate.go                  Gate commands: list, get, create, delete, enable/disable, archive, launch, update, check
@@ -31,8 +35,10 @@ internal/
       usage.go                 Per-entity reference card
     config/
       config.go                Dynamic config commands
-      rule.go                  Config rule subcommands + ValidateAgainstSchema (santhosh-tekuri/jsonschema/v6)
-      schema.go                config schema get/set/clear + NormalizeSchema (API stores schemas string-form)
+      rule.go                  Config rule subcommands: list, add, update, remove, move
+      schema.go                config schema get/set/clear commands
+      schemavalidate.go        Schema validation library: NormalizeSchema, ValidateAgainstSchema,
+                               validateUpdatePayload (API stores schemas string-form; jsonschema/v6)
       value.go                 config value get/set (defaultValue)
       usage.go                 Per-entity reference card
     experiment/
@@ -44,6 +50,7 @@ internal/
     tag/
       tag.go                   Tag commands: list, get, create, update, delete
       usage.go                 Per-entity reference card
+    clitest/clitest.go         Run harness: httptest server via ClientFactory + captured stdout/stderr
   config/config.go             App config file I/O (~/.config/agent-statsig/config.json)
   credential/
     credential.go              Credential storage (index file + keychain integration)
@@ -83,12 +90,12 @@ make vet            # go vet
 
 ## Testing
 
-Tests use `shared.SetupMockServer(t, handler)` to inject an httptest server via `ClientFactory`. This enables full CLI command testing without real credentials.
+Tests use `clitest.Run(t, Register, handler, args...)`, which injects an httptest server via `shared.ClientFactory` — full CLI command testing without real credentials. Response fixtures come from `internal/mockstatsig` (`Entity`, `List`, `StringFormSchema`, and the stateful `ConfigServer` that records PATCH/DELETE bodies). Schemas in fixtures must be string-form (`StringFormSchema`) to match the real API.
 
 ```go
 func TestGateGet(t *testing.T) {
-    out, _ := runGateCmd(t, func(w http.ResponseWriter, r *http.Request) {
-        w.Write(entityJSON(api.Gate{Name: "my_gate"}))
+    out, _ := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+        w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate"}))
     }, "gate", "get", "my_gate")
     // assert on out...
 }
