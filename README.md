@@ -6,8 +6,8 @@ Statsig feature flag CLI for AI agents. Manage gates, dynamic configs, experimen
 
 - **Five entity types**: feature gates, dynamic configs, experiments, segments, tags
 - **Full CRUD + lifecycle**: create, read, update, delete, enable/disable, archive, and entity-specific operations (rollout, start/ship experiments, manage segment IDs)
-- **Rule manipulation**: add, update, and remove targeting rules with criteria validation
-- **JSON Schema validation**: dynamic config return values validated client-side against the config's schema
+- **Rule manipulation**: add, update, remove, and reorder targeting rules with criteria validation — reference rules by ID or unique name
+- **JSON Schema management**: set, inspect, or clear a dynamic config's schema (draft 2020-12); return values and defaultValue are validated client-side, with `--dry-run` for server-side validation without persisting
 - **Structured output**: JSON/YAML/NDJSON output with classified errors (`fixable_by: agent|human|retry`)
 - **Secure credential storage**: macOS Keychain integration, multi-project support via aliases
 - **Progressive documentation**: top-level overview → per-entity reference → criteria discovery
@@ -101,6 +101,16 @@ agent-statsig gate rule add my_gate \
   --criteria email \
   --value "alice@example.com" \
   --value "bob@example.com"
+
+# Reorder rules (first match wins); --rule takes an ID or unique name
+agent-statsig gate rule move my_gate --rule "Internal team" --position top
+
+# Enforce a JSON Schema on a dynamic config, then set its fallback value
+agent-statsig config schema set my_config '{"type":"object","required":["theme"]}'
+agent-statsig config value set my_config '{"theme":"light"}'
+
+# Validate a risky change server-side without persisting it
+agent-statsig config update my_config '{"defaultValue":{"theme":"dark"}}' --dry-run
 
 # Start an experiment
 agent-statsig experiment start my_experiment

@@ -92,7 +92,7 @@ Progressive disclosure pattern:
 
 ## Testing
 
-- DI via `shared.ClientFactory` override + `SetupMockServer` test helper
+- DI via `shared.ClientFactory` override + a mock-server harness (v1 shipped `shared.SetupMockServer`; superseded by `clitest.Run`)
 - Full CLI command tests using httptest mock servers
 - JSON Schema validation tested with type checking, required fields, unknown fields
 - 68%+ total coverage, 75-89% on CLI entity packages

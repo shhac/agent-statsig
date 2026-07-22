@@ -68,8 +68,11 @@ skills/
 - **Structured JSON output to stdout**: errors to stderr as `{error, hint, fixable_by}` JSON
 - **Repeatable flags**: `--value`, `--env`, `--id` use StringArrayVar (not comma-separated) to handle values with special characters
 - **Default operator**: `--operator` defaults to `any` (case-insensitive match), matching Statsig UI behavior
-- **JSON Schema validation**: `santhosh-tekuri/jsonschema/v6` for full draft 2020-12 compliance on dynamic config return values
-- **DI for testing**: `shared.ClientFactory` override enables httptest-based CLI command tests
+- **JSON Schema validation**: `santhosh-tekuri/jsonschema/v6` for full draft 2020-12 compliance on dynamic config return values and defaultValue; schemas managed via `config schema get/set/clear` (draft 2020-12 only — older drafts rejected)
+- **Schemas are string-form in the API**: the Console API stores a config's schema as a JSON-encoded string; `NormalizeSchema` accepts both string and object form (object-form fixtures mask bugs — use `mockstatsig.StringFormSchema` in tests)
+- **--dry-run on config writes**: config-level mutations pass the Console API's `dryRun` query param and wrap output in `{dryRun:true, data}`; verified only on the dynamic-config PATCH endpoint, so scoped there
+- **Rule references resolve ID-first, then unique name**: `shared.FindRule` powers `--rule` on all gate/config rule update/remove/move commands; ambiguous names error listing candidate IDs; `--by-id` disables name resolution
+- **DI for testing**: `shared.ClientFactory` override enables httptest-based CLI command tests via `clitest.Run`
 - **Condition types are universal**: the 25 types are a platform-level constant (not per-project). Per-project customization uses `custom_field` and `unit_id`
 - **macOS Keychain**: credentials stored in system Keychain (service: `app.paulie.agent-statsig`); falls back to file on Linux/Windows
 - **Progressive documentation**: `usage` → per-entity `usage` → `gate criteria` for condition discovery
