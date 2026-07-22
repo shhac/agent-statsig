@@ -37,15 +37,20 @@ RULE MANAGEMENT
     [--field <name>]                 For custom_field criteria only
 
   gate rule update <gate>
-    --rule <rule-id>                 Use 'gate rule list' to find IDs
+    --rule <id-or-name>              Rule ID or unique rule name
     [--add-value <v>]                Add to existing values (repeatable)
     [--remove-value <v>]             Remove from existing values (repeatable)
     [--pass-percent N --set-percent] Update pass percentage
 
-  gate rule remove <gate> --rule <rule-id>
+  gate rule remove <gate> --rule <id-or-name>
 
-  gate rule move <gate> --rule <rule-id> --position <n|top|bottom>
+  gate rule move <gate> --rule <id-or-name> --position <n|top|bottom>
     Rules evaluate top-to-bottom (first match wins); position is 1-based.
+
+  RULE REFERENCES
+    --rule accepts a rule ID or a unique rule name (ID match wins). An
+    ambiguous name errors and lists the candidate IDs. Pass --by-id to
+    treat --rule strictly as an ID (also skips the lookup fetch).
 
 EXAMPLES
   # Target an email domain in staging

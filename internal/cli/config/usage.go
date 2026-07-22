@@ -42,14 +42,19 @@ RULE MANAGEMENT
     [--field <name>]                 For custom_field criteria
 
   config rule update <config>
-    --rule <rule-id>
+    --rule <id-or-name>
     [--pass-percent N --set-percent]
     [--return-value <json>]
 
-  config rule remove <config> --rule <rule-id>
+  config rule remove <config> --rule <id-or-name>
 
-  config rule move <config> --rule <rule-id> --position <n|top|bottom>
+  config rule move <config> --rule <id-or-name> --position <n|top|bottom>
     Rules evaluate top-to-bottom (first match wins); position is 1-based.
+
+  RULE REFERENCES
+    --rule accepts a rule ID or a unique rule name (ID match wins). An
+    ambiguous name errors and lists the candidate IDs. Pass --by-id to
+    treat --rule strictly as an ID (also skips the lookup fetch).
 
 EXAMPLES
   # Add a rule returning custom values for internal users

@@ -130,7 +130,8 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 
 func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var (
-		ruleID      string
+		ruleRef     string
+		byID        bool
 		passPercent float64
 		setPercent  bool
 		returnValue string
@@ -161,26 +162,38 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 						WithHint("Use --pass-percent or --return-value")
 				}
 
-				if rv, ok := update["returnValue"]; ok && !force {
+				rv, hasRV := update["returnValue"]
+				resolvedID := ruleRef
+				if !byID || (hasRV && !force) {
 					configEntity, err := client.GetConfig(ctx, args[0])
 					if err != nil {
 						return err
 					}
-					if err := ValidateAgainstSchema(configEntity.Schema, rv); err != nil {
-						return err
+					if !byID {
+						idx, err := shared.FindRule(configEntity.Rules, ruleRef, false)
+						if err != nil {
+							return err
+						}
+						resolvedID = configEntity.Rules[idx].ID
+					}
+					if hasRV && !force {
+						if err := ValidateAgainstSchema(configEntity.Schema, rv); err != nil {
+							return err
+						}
 					}
 				}
 
-				if err := client.UpdateConfigRule(ctx, args[0], ruleID, update); err != nil {
+				if err := client.UpdateConfigRule(ctx, args[0], resolvedID, update); err != nil {
 					return err
 				}
-				shared.WriteResource(map[string]any{"status": "ok", "rule": ruleID}, g.Format)
+				shared.WriteResource(map[string]any{"status": "ok", "rule": resolvedID}, g.Format)
 				return nil
 			})
 		},
 	}
-	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID to update")
+	cmd.Flags().StringVar(&ruleRef, "rule", "", "Rule ID or unique rule name")
 	cmd.MarkFlagRequired("rule")
+	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution)")
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 0, "Pass percentage")
 	cmd.Flags().BoolVar(&setPercent, "set-percent", false, "Apply --pass-percent value")
 	cmd.Flags().StringVar(&returnValue, "return-value", "", "JSON return value")
@@ -189,7 +202,8 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 }
 
 func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	var ruleID string
+	var ruleRef string
+	var byID bool
 
 	cmd := &cobra.Command{
 		Use:   "remove <config>",
@@ -198,22 +212,36 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteConfigRule(ctx, args[0], ruleID); err != nil {
+				resolvedID := ruleRef
+				if !byID {
+					configEntity, err := client.GetConfig(ctx, args[0])
+					if err != nil {
+						return err
+					}
+					idx, err := shared.FindRule(configEntity.Rules, ruleRef, false)
+					if err != nil {
+						return err
+					}
+					resolvedID = configEntity.Rules[idx].ID
+				}
+				if err := client.DeleteConfigRule(ctx, args[0], resolvedID); err != nil {
 					return err
 				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": ruleID}, g.Format)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": resolvedID}, g.Format)
 				return nil
 			})
 		},
 	}
-	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID to remove")
+	cmd.Flags().StringVar(&ruleRef, "rule", "", "Rule ID or unique rule name")
 	cmd.MarkFlagRequired("rule")
+	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution and the lookup fetch)")
 	parent.AddCommand(cmd)
 }
 
 func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var (
-		ruleID   string
+		ruleRef  string
+		byID     bool
 		position string
 		dryRun   bool
 	)
@@ -229,7 +257,7 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 				if err != nil {
 					return err
 				}
-				rules, err := shared.MoveRule(configEntity.Rules, ruleID, position)
+				rules, err := shared.MoveRule(configEntity.Rules, ruleRef, position, byID)
 				if err != nil {
 					return err
 				}
@@ -237,8 +265,9 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 			})
 		},
 	}
-	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID (or unique name) to move")
+	cmd.Flags().StringVar(&ruleRef, "rule", "", "Rule ID or unique rule name")
 	cmd.MarkFlagRequired("rule")
+	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution)")
 	cmd.Flags().StringVar(&position, "position", "", "Target position: 1-based number, 'top', or 'bottom'")
 	cmd.MarkFlagRequired("position")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")

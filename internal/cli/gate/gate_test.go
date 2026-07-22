@@ -27,25 +27,6 @@ func TestFindPublicRule(t *testing.T) {
 	}
 }
 
-func TestFindRuleByID(t *testing.T) {
-	rules := []api.Rule{
-		{ID: "r1", Name: "first"},
-		{ID: "r2", Name: "second"},
-	}
-
-	r := FindRuleByID(rules, "r2")
-	if r == nil {
-		t.Fatal("should find rule r2")
-	}
-	if r.Name != "second" {
-		t.Errorf("name = %q", r.Name)
-	}
-
-	if FindRuleByID(rules, "r99") != nil {
-		t.Error("should return nil for missing rule")
-	}
-}
-
 func TestMergeConditionValues(t *testing.T) {
 	existing := []string{"a@test.com", "b@test.com"}
 

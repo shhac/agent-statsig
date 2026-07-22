@@ -110,7 +110,8 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 
 func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var (
-		ruleID       string
+		ruleRef      string
+		byID         bool
 		addValues    []string
 		removeValues []string
 		passPercent  float64
@@ -124,7 +125,7 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if ruleID == "" {
+				if ruleRef == "" {
 					return agenterrors.New("--rule is required", agenterrors.FixableByAgent).
 						WithHint("Use 'gate rule list <gate>' to find rule IDs")
 				}
@@ -134,11 +135,11 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 					return err
 				}
 
-				targetRule := FindRuleByID(gate.Rules, ruleID)
-				if targetRule == nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "rule %q not found", ruleID).
-						WithHint("Use 'gate rule list " + args[0] + "' to see rule IDs")
+				idx, err := shared.FindRule(gate.Rules, ruleRef, byID)
+				if err != nil {
+					return err
 				}
+				targetRule := &gate.Rules[idx]
 
 				update := BuildRuleUpdate(targetRule, addValues, removeValues, passPercent, setPercent)
 				if len(update) == 0 {
@@ -146,16 +147,17 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 						WithHint("Use --add-value, --remove-value, or --pass-percent")
 				}
 
-				if err := client.UpdateGateRule(ctx, args[0], ruleID, update); err != nil {
+				if err := client.UpdateGateRule(ctx, args[0], targetRule.ID, update); err != nil {
 					return err
 				}
-				shared.WriteResource(map[string]any{"status": "ok", "rule": ruleID}, g.Format)
+				shared.WriteResource(map[string]any{"status": "ok", "rule": targetRule.ID}, g.Format)
 				return nil
 			})
 		},
 	}
-	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID to update")
+	cmd.Flags().StringVar(&ruleRef, "rule", "", "Rule ID or unique rule name")
 	cmd.MarkFlagRequired("rule")
+	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution)")
 	cmd.Flags().StringArrayVar(&addValues, "add-value", nil, "Value to add (repeatable)")
 	cmd.Flags().StringArrayVar(&removeValues, "remove-value", nil, "Value to remove (repeatable)")
 	cmd.Flags().Float64Var(&passPercent, "pass-percent", 0, "Pass percentage (0-100)")
@@ -164,7 +166,8 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 }
 
 func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
-	var ruleID string
+	var ruleRef string
+	var byID bool
 
 	cmd := &cobra.Command{
 		Use:   "remove <gate>",
@@ -173,22 +176,36 @@ func registerRuleRemove(parent *cobra.Command, globals func() *shared.GlobalFlag
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				if err := client.DeleteGateRule(ctx, args[0], ruleID); err != nil {
+				resolvedID := ruleRef
+				if !byID {
+					gateEntity, err := client.GetGate(ctx, args[0])
+					if err != nil {
+						return err
+					}
+					idx, err := shared.FindRule(gateEntity.Rules, ruleRef, false)
+					if err != nil {
+						return err
+					}
+					resolvedID = gateEntity.Rules[idx].ID
+				}
+				if err := client.DeleteGateRule(ctx, args[0], resolvedID); err != nil {
 					return err
 				}
-				shared.WriteResource(map[string]any{"status": "ok", "deleted": ruleID}, g.Format)
+				shared.WriteResource(map[string]any{"status": "ok", "deleted": resolvedID}, g.Format)
 				return nil
 			})
 		},
 	}
-	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID to remove")
+	cmd.Flags().StringVar(&ruleRef, "rule", "", "Rule ID or unique rule name")
 	cmd.MarkFlagRequired("rule")
+	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution and the lookup fetch)")
 	parent.AddCommand(cmd)
 }
 
 func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var (
-		ruleID   string
+		ruleRef  string
+		byID     bool
 		position string
 	)
 
@@ -203,7 +220,7 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 				if err != nil {
 					return err
 				}
-				rules, err := shared.MoveRule(gateEntity.Rules, ruleID, position)
+				rules, err := shared.MoveRule(gateEntity.Rules, ruleRef, position, byID)
 				if err != nil {
 					return err
 				}
@@ -216,21 +233,12 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 			})
 		},
 	}
-	cmd.Flags().StringVar(&ruleID, "rule", "", "Rule ID (or unique name) to move")
+	cmd.Flags().StringVar(&ruleRef, "rule", "", "Rule ID or unique rule name")
 	cmd.MarkFlagRequired("rule")
+	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution)")
 	cmd.Flags().StringVar(&position, "position", "", "Target position: 1-based number, 'top', or 'bottom'")
 	cmd.MarkFlagRequired("position")
 	parent.AddCommand(cmd)
-}
-
-// FindRuleByID returns the rule with the given ID, or nil.
-func FindRuleByID(rules []api.Rule, id string) *api.Rule {
-	for i := range rules {
-		if rules[i].ID == id {
-			return &rules[i]
-		}
-	}
-	return nil
 }
 
 // BuildRuleUpdate constructs an update map for a rule, merging value changes.

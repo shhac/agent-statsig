@@ -25,13 +25,13 @@ internal/
       validate.go              ValidateTags, ValidateCriteria, ParseJSONArg
       write.go                 WriteResource, WritePaginatedList output writers
       slices.go                Generic slice/map helpers
-      rules.go                 MoveRule pure helper (rule reordering for gates + configs)
+      rules.go                 FindRule (ID-or-unique-name resolver) + MoveRule reordering helper
     project/project.go         Project CRUD: add, update, remove, list, set-default, test
     gate/
       gate.go                  Gate commands: list, get, create, delete, enable/disable, archive, launch, update, check
       rollout.go               Rollout command + FindPublicRule pure helper
       criteria.go              Criteria listing (25 condition types + operators)
-      rule.go                  Rule subcommands: list, add, update, remove + FindRuleByID, BuildRuleUpdate, MergeConditionValues
+      rule.go                  Rule subcommands: list, add, update, remove, move + BuildRuleUpdate, MergeConditionValues
       usage.go                 Per-entity reference card
     config/
       config.go                Dynamic config commands

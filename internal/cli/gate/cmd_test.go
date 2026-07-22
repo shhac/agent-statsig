@@ -3,6 +3,7 @@ package gate
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
@@ -321,5 +322,29 @@ func TestGateRuleMove(t *testing.T) {
 	first, _ := rules[0].(map[string]any)
 	if first["id"] != "r2" {
 		t.Errorf("first rule after move = %v", first["id"])
+	}
+}
+
+func TestGateRuleUpdateByName(t *testing.T) {
+	var patchPath string
+	_, stderr := clitest.Run(t, Register, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write(mockstatsig.Entity(api.Gate{Name: "my_gate", Rules: []api.Rule{
+				{ID: "abc123", Name: "Team", Conditions: []api.Condition{
+					{Type: "email", Operator: "any", TargetValue: []string{"a@co.com"}},
+				}},
+			}}))
+		case "PATCH":
+			patchPath = r.URL.Path
+			w.Write([]byte(`{"message":"ok"}`))
+		}
+	}, "gate", "rule", "update", "my_gate", "--rule", "Team", "--add-value", "b@co.com")
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	if !strings.HasSuffix(patchPath, "/rules/abc123") {
+		t.Errorf("PATCH should target the resolved rule ID, got %s", patchPath)
 	}
 }

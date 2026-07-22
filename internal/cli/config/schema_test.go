@@ -223,6 +223,7 @@ func TestRuleUpdateValidatesReturnValue(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
 		Name:   "my_config",
 		Schema: mockstatsig.StringFormSchema(themeSchema),
+		Rules:  []api.Rule{{ID: "r1", Name: "First"}},
 	})
 	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "update", "my_config",
 		"--rule", "r1", "--return-value", `{"theme":123}`)

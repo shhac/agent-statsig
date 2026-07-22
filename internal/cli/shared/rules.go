@@ -3,24 +3,56 @@ package shared
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/shhac/agent-statsig/internal/api"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
 )
 
-// MoveRule returns a reordered copy of rules with the rule matching idOrName
-// (matched by ID first, then by unique name) moved to a 1-based position;
-// "top" and "bottom" are also accepted. Rules evaluate top-to-bottom, so
-// position 1 wins first.
-func MoveRule(rules []api.Rule, idOrName, position string) ([]api.Rule, error) {
-	idx := findRuleIndex(rules, idOrName)
-	if idx == -2 {
-		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "multiple rules named %q", idOrName).
-			WithHint("Use the rule ID from 'rule list' instead of the name")
+// FindRule resolves a rule reference to its index. An exact ID match wins;
+// otherwise a unique rule name matches, unless byID restricts resolution to
+// IDs. An ambiguous name errors and lists the candidate IDs so callers can
+// retry with one.
+func FindRule(rules []api.Rule, ref string, byID bool) (int, error) {
+	for i, r := range rules {
+		if r.ID == ref {
+			return i, nil
+		}
+	}
+	if byID {
+		return 0, agenterrors.Newf(agenterrors.FixableByAgent, "rule with ID %q not found", ref).
+			WithHint("Use 'rule list' to see rule IDs, or drop --by-id to match by name")
+	}
+
+	idx := -1
+	var ids []string
+	for i, r := range rules {
+		if r.Name != ref {
+			continue
+		}
+		ids = append(ids, r.ID)
+		if idx == -1 {
+			idx = i
+		}
+	}
+	if len(ids) > 1 {
+		return 0, agenterrors.Newf(agenterrors.FixableByAgent, "multiple rules named %q", ref).
+			WithHint(fmt.Sprintf("Matching rule IDs: %s — pass --rule <id> instead", strings.Join(ids, ", ")))
 	}
 	if idx == -1 {
-		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "rule %q not found", idOrName).
+		return 0, agenterrors.Newf(agenterrors.FixableByAgent, "rule %q not found", ref).
 			WithHint("Use 'rule list' to see rule IDs and names")
+	}
+	return idx, nil
+}
+
+// MoveRule returns a reordered copy of rules with the rule matching ref
+// (resolved via FindRule) moved to a 1-based position; "top" and "bottom" are
+// also accepted. Rules evaluate top-to-bottom, so position 1 wins first.
+func MoveRule(rules []api.Rule, ref, position string, byID bool) ([]api.Rule, error) {
+	idx, err := FindRule(rules, ref, byID)
+	if err != nil {
+		return nil, err
 	}
 
 	target, err := resolvePosition(position, len(rules))
@@ -38,27 +70,6 @@ func MoveRule(rules []api.Rule, idOrName, position string) ([]api.Rule, error) {
 	out = append(out, moved)
 	out = append(out, rest[target:]...)
 	return out, nil
-}
-
-// findRuleIndex matches by ID first, then by name. Returns -1 when not found
-// and -2 when the name is ambiguous.
-func findRuleIndex(rules []api.Rule, idOrName string) int {
-	for i, r := range rules {
-		if r.ID == idOrName {
-			return i
-		}
-	}
-	idx := -1
-	for i, r := range rules {
-		if r.Name != idOrName {
-			continue
-		}
-		if idx != -1 {
-			return -2
-		}
-		idx = i
-	}
-	return idx
 }
 
 func resolvePosition(position string, count int) (int, error) {

@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
@@ -167,6 +168,69 @@ func TestConfigRuleRemove(t *testing.T) {
 	}
 	deletes := srv.RuleDeletes()
 	if len(deletes) != 1 || deletes[0] != "r1" {
+		t.Errorf("RuleDeletes = %v", deletes)
+	}
+}
+
+func TestConfigRuleRemoveByName(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
+		Name:  "my_config",
+		Rules: []api.Rule{{ID: "r1", Name: "First"}, {ID: "r2", Name: "Second"}},
+	})
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "remove", "my_config", "--rule", "Second")
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	deletes := srv.RuleDeletes()
+	if len(deletes) != 1 || deletes[0] != "r2" {
+		t.Errorf("name should resolve to the rule's ID; RuleDeletes = %v", deletes)
+	}
+}
+
+func TestConfigRuleRemoveAmbiguousName(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
+		Name:  "my_config",
+		Rules: []api.Rule{{ID: "r1", Name: "Dup"}, {ID: "r2", Name: "Dup"}},
+	})
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "remove", "my_config", "--rule", "Dup")
+
+	if stderr == "" {
+		t.Fatal("ambiguous name must error")
+	}
+	for _, id := range []string{"r1", "r2"} {
+		if !strings.Contains(stderr, id) {
+			t.Errorf("ambiguity error should list candidate ID %s: %s", id, stderr)
+		}
+	}
+	if len(srv.RuleDeletes()) != 0 {
+		t.Error("must not delete on ambiguity")
+	}
+}
+
+func TestConfigRuleByIDSkipsNameResolution(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
+		Name:  "my_config",
+		Rules: []api.Rule{{ID: "r1", Name: "First"}},
+	})
+
+	// move: byID rejects a name outright, nothing is written
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "move", "my_config",
+		"--rule", "First", "--by-id", "--position", "top")
+	if stderr == "" {
+		t.Error("--by-id must not match names")
+	}
+	if len(srv.Patches()) != 0 {
+		t.Error("no PATCH expected")
+	}
+
+	// remove: byID skips the lookup fetch and passes the ref straight through
+	_, stderr = clitest.Run(t, Register, srv.Handler(), "config", "rule", "remove", "my_config",
+		"--rule", "r1", "--by-id")
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	if deletes := srv.RuleDeletes(); len(deletes) != 1 || deletes[0] != "r1" {
 		t.Errorf("RuleDeletes = %v", deletes)
 	}
 }
