@@ -65,24 +65,9 @@ func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				var schemaVal any
-				if err := json.Unmarshal([]byte(args[1]), &schemaVal); err != nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "invalid schema JSON: %s", err).
-						WithHint("Provide the schema as a JSON object, e.g. '{\"type\":\"object\",\"required\":[\"theme\"]}'")
-				}
-				schemaMap, ok := schemaVal.(map[string]any)
-				if !ok {
-					return agenterrors.New("schema must be a JSON object", agenterrors.FixableByAgent).
-						WithHint("Pass an object-form JSON Schema; the CLI handles the API's string encoding for you")
-				}
-				if declared, ok := schemaMap["$schema"].(string); ok && !isDraft202012(declared) {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "unsupported $schema %q: Statsig evaluates schemas as JSON Schema draft 2020-12 only", declared).
-						WithHint("Remove $schema, or set it to https://json-schema.org/draft/2020-12/schema. Older drafts are not a safe subset — e.g. draft-07 tuple-form 'items' means something different in 2020-12")
-				}
-				compiled, err := compileSchemaValue(schemaVal)
+				schemaVal, compiled, err := parseSchemaArg(args[1])
 				if err != nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "not a valid JSON Schema (draft 2020-12): %s", err).
-						WithHint("Fix the schema; see https://json-schema.org/draft/2020-12")
+					return err
 				}
 
 				if !force {
@@ -149,6 +134,32 @@ func NormalizeSchema(schema json.RawMessage) (json.RawMessage, bool) {
 		return nil, false
 	}
 	return json.RawMessage(inner), true
+}
+
+// parseSchemaArg parses a user-supplied schema argument: valid JSON, object
+// form, draft 2020-12 only, and compilable. Returns the parsed value (for
+// re-encoding into the API's string form) alongside the compiled schema.
+func parseSchemaArg(raw string) (any, *jsonschema.Schema, error) {
+	var schemaVal any
+	if err := json.Unmarshal([]byte(raw), &schemaVal); err != nil {
+		return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "invalid schema JSON: %s", err).
+			WithHint("Provide the schema as a JSON object, e.g. '{\"type\":\"object\",\"required\":[\"theme\"]}'")
+	}
+	schemaMap, ok := schemaVal.(map[string]any)
+	if !ok {
+		return nil, nil, agenterrors.New("schema must be a JSON object", agenterrors.FixableByAgent).
+			WithHint("Pass an object-form JSON Schema; the CLI handles the API's string encoding for you")
+	}
+	if declared, ok := schemaMap["$schema"].(string); ok && !isDraft202012(declared) {
+		return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "unsupported $schema %q: Statsig evaluates schemas as JSON Schema draft 2020-12 only", declared).
+			WithHint("Remove $schema, or set it to https://json-schema.org/draft/2020-12/schema. Older drafts are not a safe subset — e.g. draft-07 tuple-form 'items' means something different in 2020-12")
+	}
+	compiled, err := compileSchemaValue(schemaVal)
+	if err != nil {
+		return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "not a valid JSON Schema (draft 2020-12): %s", err).
+			WithHint("Fix the schema; see https://json-schema.org/draft/2020-12")
+	}
+	return schemaVal, compiled, nil
 }
 
 // isDraft202012 reports whether a $schema URI declares JSON Schema draft
@@ -228,28 +239,16 @@ func validateUpdatePayload(ctx context.Context, client *api.Client, id string, u
 	if force {
 		return nil
 	}
-
-	dv, hasDV := update["defaultValue"]
-	rules, hasRules := update["rules"]
+	_, hasDV := update["defaultValue"]
+	_, hasRules := update["rules"]
 	if !hasDV && !hasRules && !hasSchema {
 		return nil
 	}
 
-	var schemaRaw json.RawMessage
-	if hasSchema {
-		s, ok := schemaField.(string)
-		if !ok {
-			return nil // schema: null clears — nothing to validate against
-		}
-		schemaRaw = json.RawMessage(s)
-	} else {
-		cfg, err := client.GetConfig(ctx, id)
-		if err != nil {
-			return err
-		}
-		schemaRaw = cfg.Schema
+	schemaRaw, err := effectiveSchema(ctx, client, id, schemaField, hasSchema)
+	if err != nil || schemaRaw == nil {
+		return err
 	}
-
 	normalized, ok := NormalizeSchema(schemaRaw)
 	if !ok {
 		return nil
@@ -263,34 +262,54 @@ func validateUpdatePayload(ctx context.Context, client *api.Client, id string, u
 		return nil
 	}
 
-	var violations []string
-	if hasDV && dv != nil {
-		if err := compiled.Validate(dv); err != nil {
-			violations = append(violations, fmt.Sprintf("defaultValue: %v", err))
-		}
+	partial, ok := decodePartialConfig(update)
+	if !ok {
+		return nil // unrecognizable payload shapes skip client-side validation; the server arbitrates
 	}
-	if hasRules {
-		if ruleList, ok := rules.([]any); ok {
-			for _, r := range ruleList {
-				rule, ok := r.(map[string]any)
-				if !ok {
-					continue
-				}
-				rv, ok := rule["returnValue"]
-				if !ok || rv == nil {
-					continue
-				}
-				name, _ := rule["name"].(string)
-				if err := compiled.Validate(rv); err != nil {
-					violations = append(violations, fmt.Sprintf("rule %q returnValue: %v", name, err))
-				}
-			}
-		}
-	}
-	if len(violations) > 0 {
+	if violations := schemaViolations(compiled, partial); len(violations) > 0 {
 		return agenterrors.Newf(agenterrors.FixableByAgent,
 			"update does not conform to the config's schema: %s", strings.Join(violations, "; ")).
 			WithHint("Fix the values, change the schema with 'config schema set', or re-run with --force to skip client-side validation")
 	}
 	return nil
+}
+
+// effectiveSchema resolves which schema a raw update should be validated
+// against: the one being set, else the stored one. A nil result (with nil
+// error) means validation is off — the update clears the schema.
+func effectiveSchema(ctx context.Context, client *api.Client, id string, schemaField any, hasSchema bool) (json.RawMessage, error) {
+	if hasSchema {
+		s, ok := schemaField.(string)
+		if !ok {
+			return nil, nil // schema: null clears
+		}
+		return json.RawMessage(s), nil
+	}
+	cfg, err := client.GetConfig(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return cfg.Schema, nil
+}
+
+// decodePartialConfig round-trips an update's defaultValue/rules into the
+// typed shape so schemaViolations stays the single walker for both stored
+// configs and raw update payloads.
+func decodePartialConfig(update map[string]any) (*api.DynamicConfig, bool) {
+	subset := map[string]any{}
+	if dv, ok := update["defaultValue"]; ok && dv != nil {
+		subset["defaultValue"] = dv
+	}
+	if rules, ok := update["rules"]; ok && rules != nil {
+		subset["rules"] = rules
+	}
+	b, err := json.Marshal(subset)
+	if err != nil {
+		return nil, false
+	}
+	var partial api.DynamicConfig
+	if err := json.Unmarshal(b, &partial); err != nil {
+		return nil, false
+	}
+	return &partial, true
 }
