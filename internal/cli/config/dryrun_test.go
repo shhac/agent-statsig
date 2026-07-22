@@ -20,11 +20,11 @@ func TestDryRunDoesNotPersist(t *testing.T) {
 	if parsed["dryRun"] != true {
 		t.Errorf("output should be marked dryRun: %s", out)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("dry-run must not persist a PATCH")
 	}
-	if srv.DryRunPatchCount() != 1 {
-		t.Errorf("DryRunPatchCount = %d", srv.DryRunPatchCount())
+	if len(srv.DryRunPatches()) != 1 {
+		t.Errorf("DryRunPatchCount = %d", len(srv.DryRunPatches()))
 	}
 }
 
@@ -42,10 +42,10 @@ func TestDryRunOnUpdateAndRuleAdd(t *testing.T) {
 		t.Fatalf("rule add --dry-run: %s", stderr)
 	}
 
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("dry-run must not persist")
 	}
-	if srv.DryRunPatchCount() != 2 {
-		t.Errorf("DryRunPatchCount = %d", srv.DryRunPatchCount())
+	if len(srv.DryRunPatches()) != 2 {
+		t.Errorf("DryRunPatchCount = %d", len(srv.DryRunPatches()))
 	}
 }

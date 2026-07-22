@@ -10,6 +10,7 @@ package mockstatsig
 import (
 	"encoding/json"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 
@@ -47,6 +48,7 @@ type ConfigServer struct {
 	patches       []map[string]any
 	rulePatches   []map[string]any
 	dryRunPatches []map[string]any
+	ruleDeletes   []string
 }
 
 func NewConfigServer(cfg api.DynamicConfig) *ConfigServer {
@@ -67,6 +69,9 @@ func (s *ConfigServer) Handler() http.HandlerFunc {
 			var patch map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&patch)
 			s.rulePatches = append(s.rulePatches, patch)
+			_, _ = w.Write([]byte(`{"message":"ok"}`))
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/rules/"):
+			s.ruleDeletes = append(s.ruleDeletes, path.Base(r.URL.Path))
 			_, _ = w.Write([]byte(`{"message":"ok"}`))
 		case r.Method == http.MethodPatch:
 			var patch map[string]any
@@ -91,44 +96,31 @@ func (s *ConfigServer) Handler() http.HandlerFunc {
 	}
 }
 
-// LastPatch returns the most recent config-level PATCH body, or nil.
-func (s *ConfigServer) LastPatch() map[string]any {
+// Patches returns a copy of the config-level PATCH bodies received, in order.
+func (s *ConfigServer) Patches() []map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.patches) == 0 {
-		return nil
-	}
-	return s.patches[len(s.patches)-1]
+	return append([]map[string]any(nil), s.patches...)
 }
 
-// PatchCount returns how many config-level PATCH requests were received.
-func (s *ConfigServer) PatchCount() int {
+// RulePatches returns a copy of the per-rule PATCH bodies received, in order.
+func (s *ConfigServer) RulePatches() []map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return len(s.patches)
+	return append([]map[string]any(nil), s.rulePatches...)
 }
 
-// LastRulePatch returns the most recent per-rule PATCH body, or nil.
-func (s *ConfigServer) LastRulePatch() map[string]any {
+// DryRunPatches returns a copy of the config-level PATCH bodies that arrived
+// with dryRun=true; those are recorded but never applied to the document.
+func (s *ConfigServer) DryRunPatches() []map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.rulePatches) == 0 {
-		return nil
-	}
-	return s.rulePatches[len(s.rulePatches)-1]
+	return append([]map[string]any(nil), s.dryRunPatches...)
 }
 
-// DryRunPatchCount returns how many config-level PATCH requests arrived with
-// dryRun=true; those are recorded but never applied to the document.
-func (s *ConfigServer) DryRunPatchCount() int {
+// RuleDeletes returns the rule IDs deleted via DELETE /rules/{id}, in order.
+func (s *ConfigServer) RuleDeletes() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return len(s.dryRunPatches)
-}
-
-// RulePatchCount returns how many per-rule PATCH requests were received.
-func (s *ConfigServer) RulePatchCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.rulePatches)
+	return append([]string(nil), s.ruleDeletes...)
 }

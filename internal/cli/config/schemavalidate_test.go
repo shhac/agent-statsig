@@ -49,7 +49,7 @@ func TestConfigUpdateValidatesRulesPayload(t *testing.T) {
 	if stderr == "" {
 		t.Error("rules payload with non-conforming returnValue should be blocked")
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH")
 	}
 
@@ -59,8 +59,8 @@ func TestConfigUpdateValidatesRulesPayload(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("conforming rules payload should pass (nil returnValue skipped): %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -72,7 +72,7 @@ func TestConfigUpdateValidatesAgainstIncomingSchema(t *testing.T) {
 	if stderr == "" {
 		t.Error("defaultValue must be validated against the schema being set in the same update")
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH")
 	}
 
@@ -82,8 +82,8 @@ func TestConfigUpdateValidatesAgainstIncomingSchema(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("conforming defaultValue should pass against incoming schema: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -98,8 +98,8 @@ func TestConfigUpdateSchemaNullSkipsValidation(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("clearing the schema disables validation for the same update: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -113,7 +113,7 @@ func TestValueSetDryRunStillValidatesClientSide(t *testing.T) {
 	if stderr == "" {
 		t.Error("client-side validation must run before a --dry-run request")
 	}
-	if srv.DryRunPatchCount() != 0 {
+	if len(srv.DryRunPatches()) != 0 {
 		t.Error("blocked value must not reach the API even as a dry run")
 	}
 }
@@ -125,11 +125,11 @@ func TestSchemaSetDryRun(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("dry-run must not persist")
 	}
-	if srv.DryRunPatchCount() != 1 {
-		t.Errorf("DryRunPatchCount = %d", srv.DryRunPatchCount())
+	if len(srv.DryRunPatches()) != 1 {
+		t.Errorf("DryRunPatchCount = %d", len(srv.DryRunPatches()))
 	}
 }
 

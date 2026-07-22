@@ -35,7 +35,7 @@ func TestValueSetValidatesAgainstSchema(t *testing.T) {
 	if parsed["fixable_by"] != "agent" {
 		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH a schema-violating defaultValue")
 	}
 
@@ -43,10 +43,11 @@ func TestValueSetValidatesAgainstSchema(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("conforming value should pass: %s", stderr)
 	}
-	patch := srv.LastPatch()
-	if patch == nil {
+	patches := srv.Patches()
+	if len(patches) == 0 {
 		t.Fatal("expected a PATCH")
 	}
+	patch := patches[len(patches)-1]
 	dv, ok := patch["defaultValue"].(map[string]any)
 	if !ok || dv["theme"] != "dark" {
 		t.Errorf("patched defaultValue = %v", patch["defaultValue"])
@@ -63,8 +64,8 @@ func TestValueSetForceSkipsValidation(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("--force should skip validation: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -75,7 +76,7 @@ func TestValueSetRejectsNonObject(t *testing.T) {
 	if stderr == "" {
 		t.Error("non-object defaultValue should be rejected")
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH")
 	}
 }

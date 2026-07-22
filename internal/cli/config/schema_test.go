@@ -38,10 +38,11 @@ func TestSchemaSetHappyPath(t *testing.T) {
 	if out == "" {
 		t.Error("expected output")
 	}
-	patch := srv.LastPatch()
-	if patch == nil {
+	patches := srv.Patches()
+	if len(patches) == 0 {
 		t.Fatal("expected a PATCH")
 	}
+	patch := patches[len(patches)-1]
 	encoded, ok := patch["schema"].(string)
 	if !ok {
 		t.Fatalf("schema must be sent string-form, got %T", patch["schema"])
@@ -70,7 +71,7 @@ func TestSchemaSetBlockedByNonConformingValues(t *testing.T) {
 	if parsed["fixable_by"] != "agent" {
 		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH when existing values violate the new schema")
 	}
 }
@@ -85,7 +86,7 @@ func TestSchemaSetEmptyObjectDefaultBlockedByRequired(t *testing.T) {
 	if stderr == "" {
 		t.Error("empty-object defaultValue should fail a schema with required fields")
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH")
 	}
 }
@@ -100,8 +101,8 @@ func TestSchemaSetNullDefaultSkipsValidation(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("absent/null defaultValue should not block schema set: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -115,8 +116,8 @@ func TestSchemaSetForceOverridesViolations(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("--force should skip validation: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -129,7 +130,7 @@ func TestSchemaSetRejectsInvalidSchema(t *testing.T) {
 	if parsed["fixable_by"] != "agent" {
 		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH an invalid schema")
 	}
 }
@@ -144,7 +145,7 @@ func TestSchemaSetRejectsOldDrafts(t *testing.T) {
 	if parsed["fixable_by"] != "agent" {
 		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH a non-2020-12 schema")
 	}
 }
@@ -157,8 +158,8 @@ func TestSchemaSetAccepts202012SchemaURI(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("2020-12 $schema should be accepted: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -169,7 +170,7 @@ func TestSchemaSetRejectsNonObject(t *testing.T) {
 	if stderr == "" {
 		t.Error("non-object schema should be rejected")
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH")
 	}
 }
@@ -184,10 +185,11 @@ func TestSchemaClear(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
 	}
-	patch := srv.LastPatch()
-	if patch == nil {
+	patches := srv.Patches()
+	if len(patches) == 0 {
 		t.Fatal("expected a PATCH")
 	}
+	patch := patches[len(patches)-1]
 	if v, present := patch["schema"]; !present || v != nil {
 		t.Errorf("expected schema:null in patch, got %v (present=%v)", v, present)
 	}
@@ -211,7 +213,7 @@ func TestRuleAddValidatesStringFormSchema(t *testing.T) {
 	if parsed["fixable_by"] != "agent" {
 		t.Errorf("string-form schema must still be enforced; fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH a schema-violating rule")
 	}
 }
@@ -227,7 +229,7 @@ func TestRuleUpdateValidatesReturnValue(t *testing.T) {
 	if stderr == "" {
 		t.Error("non-conforming return value should be blocked")
 	}
-	if srv.RulePatchCount() != 0 {
+	if len(srv.RulePatches()) != 0 {
 		t.Error("should not PATCH the rule")
 	}
 
@@ -237,8 +239,8 @@ func TestRuleUpdateValidatesReturnValue(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("conforming return value should pass: %s", stderr)
 	}
-	if srv.RulePatchCount() != 1 {
-		t.Errorf("RulePatchCount = %d", srv.RulePatchCount())
+	if len(srv.RulePatches()) != 1 {
+		t.Errorf("RulePatchCount = %d", len(srv.RulePatches()))
 	}
 }
 
@@ -252,7 +254,7 @@ func TestConfigUpdateValidatesDefaultValue(t *testing.T) {
 	if stderr == "" {
 		t.Error("non-conforming defaultValue should be blocked")
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH")
 	}
 
@@ -261,8 +263,8 @@ func TestConfigUpdateValidatesDefaultValue(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("--force should skip validation: %s", stderr)
 	}
-	if srv.PatchCount() != 1 {
-		t.Errorf("PatchCount = %d", srv.PatchCount())
+	if len(srv.Patches()) != 1 {
+		t.Errorf("PatchCount = %d", len(srv.Patches()))
 	}
 }
 
@@ -275,7 +277,7 @@ func TestConfigUpdateRejectsObjectFormSchema(t *testing.T) {
 	if parsed["fixable_by"] != "agent" {
 		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
 	}
-	if srv.PatchCount() != 0 {
+	if len(srv.Patches()) != 0 {
 		t.Error("should not PATCH object-form schema the API would reject")
 	}
 }
@@ -304,10 +306,13 @@ func TestConfigRuleMove(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
 	}
-	patch := srv.LastPatch()
-	rules, ok := patch["rules"].([]any)
+	patches := srv.Patches()
+	if len(patches) == 0 {
+		t.Fatal("expected a PATCH")
+	}
+	rules, ok := patches[len(patches)-1]["rules"].([]any)
 	if !ok || len(rules) != 3 {
-		t.Fatalf("patched rules = %v", patch["rules"])
+		t.Fatalf("patched rules = %v", patches[len(patches)-1]["rules"])
 	}
 	first, _ := rules[0].(map[string]any)
 	if first["id"] != "r3" {
