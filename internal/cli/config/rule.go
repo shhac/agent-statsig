@@ -244,24 +244,3 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }
-
-// ValidateAgainstSchema validates a value against a JSON Schema using full
-// spec compliance. Accepts both the API's string-form schema and object form
-// (see NormalizeSchema); a missing or malformed schema skips validation.
-func ValidateAgainstSchema(schema json.RawMessage, value any) error {
-	normalized, ok := NormalizeSchema(schema)
-	if !ok {
-		return nil
-	}
-
-	compiled, err := compileSchema(normalized)
-	if err != nil {
-		return nil
-	}
-
-	if err := compiled.Validate(value); err != nil {
-		return agenterrors.Newf(agenterrors.FixableByAgent, "return value does not match config schema: %s", err).
-			WithHint("Check the config's schema with 'config get <name>'")
-	}
-	return nil
-}
