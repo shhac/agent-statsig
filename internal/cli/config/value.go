@@ -45,6 +45,7 @@ func registerValueGet(parent *cobra.Command, globals func() *shared.GlobalFlags)
 
 func registerValueSet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var force bool
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "set <config> <json>",
@@ -73,15 +74,11 @@ func registerValueSet(parent *cobra.Command, globals func() *shared.GlobalFlags)
 					}
 				}
 
-				updated, err := client.UpdateConfig(ctx, args[0], map[string]any{"defaultValue": value})
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(updated, g.Format)
-				return nil
+				return applyConfigUpdate(ctx, client, g, args[0], map[string]any{"defaultValue": value}, dryRun)
 			})
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }

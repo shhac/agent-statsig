@@ -60,6 +60,12 @@ func (c *Client) UpdateConfig(ctx context.Context, id string, update map[string]
 	return doAndDecode[DynamicConfig](c, ctx, http.MethodPatch, fmt.Sprintf("%s/%s", configsPath, id), update)
 }
 
+// UpdateConfigDryRun validates a config update server-side without persisting
+// it, via the Console API's dryRun query parameter.
+func (c *Client) UpdateConfigDryRun(ctx context.Context, id string, update map[string]any) (*DynamicConfig, error) {
+	return doAndDecode[DynamicConfig](c, ctx, http.MethodPatch, fmt.Sprintf("%s/%s?dryRun=true", configsPath, id), update)
+}
+
 func (c *Client) GetConfigRules(ctx context.Context, id string) ([]Rule, error) {
 	raw, err := c.do(ctx, http.MethodGet, fmt.Sprintf("%s/%s/rules", configsPath, id), nil)
 	if err != nil {

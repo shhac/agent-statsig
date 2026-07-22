@@ -56,6 +56,7 @@ func registerSchemaGet(parent *cobra.Command, globals func() *shared.GlobalFlags
 
 func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var force bool
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "set <config> <schema-json>",
@@ -100,20 +101,18 @@ func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByAgent)
 				}
-				updated, err := client.UpdateConfig(ctx, args[0], map[string]any{"schema": string(encoded)})
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(updated, g.Format)
-				return nil
+				return applyConfigUpdate(ctx, client, g, args[0], map[string]any{"schema": string(encoded)}, dryRun)
 			})
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "Set the schema even if existing values do not conform")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }
 
 func registerSchemaClear(parent *cobra.Command, globals func() *shared.GlobalFlags) {
+	var dryRun bool
+
 	cmd := &cobra.Command{
 		Use:   "clear <config>",
 		Short: "Remove the config's JSON Schema",
@@ -121,15 +120,11 @@ func registerSchemaClear(parent *cobra.Command, globals func() *shared.GlobalFla
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				updated, err := client.UpdateConfig(ctx, args[0], map[string]any{"schema": nil})
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(updated, g.Format)
-				return nil
+				return applyConfigUpdate(ctx, client, g, args[0], map[string]any{"schema": nil}, dryRun)
 			})
 		},
 	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }
 

@@ -24,6 +24,8 @@ MODIFY
   config disable <name>
   config archive <name>
   config update <name> <json>        Raw JSON partial update (escape hatch)
+    Config-level writes (update, schema set/clear, value set, rule add)
+    accept --dry-run: the API validates the change without persisting it.
   config schema set <config> <json>  Set/replace the JSON Schema
   config schema clear <config>       Remove the JSON Schema
   config value set <config> <json>   Set the defaultValue (validated against schema)

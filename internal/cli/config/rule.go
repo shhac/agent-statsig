@@ -56,6 +56,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		field        string
 		returnValue  string
 		force        bool
+		dryRun       bool
 	)
 
 	cmd := &cobra.Command{
@@ -107,13 +108,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 				}
 
 				rules := append(configEntity.Rules, rule)
-				update := map[string]any{"rules": rules}
-				updated, err := client.UpdateConfig(ctx, args[0], update)
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(updated, g.Format)
-				return nil
+				return applyConfigUpdate(ctx, client, g, args[0], map[string]any{"rules": rules}, dryRun)
 			})
 		},
 	}
@@ -128,6 +123,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 	cmd.Flags().StringVar(&field, "field", "", "Custom field name")
 	cmd.Flags().StringVar(&returnValue, "return-value", "", "JSON return value for this rule")
 	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of --return-value")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }
 

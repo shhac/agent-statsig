@@ -39,6 +39,10 @@ applied — create missing tags with `tag create` first.
 3. Make the change with the appropriate command
 4. Verify by reading again
 
+Config-level writes (`config update`, `schema set/clear`, `value set`, `rule add`)
+accept `--dry-run` to have the API validate the change without persisting it —
+useful before risky edits.
+
 ### Error handling
 
 All errors are JSON to stderr with a classification:

@@ -42,10 +42,11 @@ func StringFormSchema(schemaJSON string) json.RawMessage {
 // applying patches to its document and recording every patch body so tests
 // can assert on what the CLI actually sent.
 type ConfigServer struct {
-	mu          sync.Mutex
-	doc         map[string]any
-	patches     []map[string]any
-	rulePatches []map[string]any
+	mu            sync.Mutex
+	doc           map[string]any
+	patches       []map[string]any
+	rulePatches   []map[string]any
+	dryRunPatches []map[string]any
 }
 
 func NewConfigServer(cfg api.DynamicConfig) *ConfigServer {
@@ -70,6 +71,11 @@ func (s *ConfigServer) Handler() http.HandlerFunc {
 		case r.Method == http.MethodPatch:
 			var patch map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&patch)
+			if r.URL.Query().Get("dryRun") == "true" {
+				s.dryRunPatches = append(s.dryRunPatches, patch)
+				_, _ = w.Write(Entity(s.doc))
+				return
+			}
 			s.patches = append(s.patches, patch)
 			for k, v := range patch {
 				if v == nil {
@@ -110,6 +116,14 @@ func (s *ConfigServer) LastRulePatch() map[string]any {
 		return nil
 	}
 	return s.rulePatches[len(s.rulePatches)-1]
+}
+
+// DryRunPatchCount returns how many config-level PATCH requests arrived with
+// dryRun=true; those are recorded but never applied to the document.
+func (s *ConfigServer) DryRunPatchCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.dryRunPatches)
 }
 
 // RulePatchCount returns how many per-rule PATCH requests were received.

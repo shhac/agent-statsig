@@ -143,9 +143,30 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		})
 }
 
+// applyConfigUpdate routes a config-level PATCH through the API's dryRun mode
+// when requested and writes the result, marking dry runs so agents know
+// nothing was persisted.
+func applyConfigUpdate(ctx context.Context, client *api.Client, g *shared.GlobalFlags, id string, update map[string]any, dryRun bool) error {
+	if dryRun {
+		cfg, err := client.UpdateConfigDryRun(ctx, id, update)
+		if err != nil {
+			return err
+		}
+		shared.WriteResource(map[string]any{"dryRun": true, "data": cfg}, g.Format)
+		return nil
+	}
+	cfg, err := client.UpdateConfig(ctx, id, update)
+	if err != nil {
+		return err
+	}
+	shared.WriteResource(cfg, g.Format)
+	return nil
+}
+
 func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	var tags []string
 	var force bool
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "update <name> <json>",
@@ -167,16 +188,12 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 				if err := validateUpdatePayload(ctx, client, args[0], update, force); err != nil {
 					return err
 				}
-				cfg, err := client.UpdateConfig(ctx, args[0], update)
-				if err != nil {
-					return err
-				}
-				shared.WriteResource(cfg, g.Format)
-				return nil
+				return applyConfigUpdate(ctx, client, g, args[0], update, dryRun)
 			})
 		},
 	}
 	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable, replaces existing tags)")
 	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of defaultValue/rules")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
 	parent.AddCommand(cmd)
 }
