@@ -149,3 +149,24 @@ func TestConfigRuleAddSchemaViolation(t *testing.T) {
 		t.Errorf("fixable_by = %v", parsed["fixable_by"])
 	}
 }
+
+func TestConfigRuleRemove(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
+		Name:  "my_config",
+		Rules: []api.Rule{{ID: "r1", Name: "First"}},
+	})
+	out, stderr := clitest.Run(t, Register, srv.Handler(), "config", "rule", "remove", "my_config", "--rule", "r1")
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	var parsed map[string]any
+	json.Unmarshal([]byte(out), &parsed)
+	if parsed["deleted"] != "r1" {
+		t.Errorf("deleted = %v", parsed["deleted"])
+	}
+	deletes := srv.RuleDeletes()
+	if len(deletes) != 1 || deletes[0] != "r1" {
+		t.Errorf("RuleDeletes = %v", deletes)
+	}
+}
