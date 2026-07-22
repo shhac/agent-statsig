@@ -56,14 +56,14 @@ func Run(t *testing.T, register func(*cobra.Command, func() *shared.GlobalFlags)
 		output.WriteError(os.Stderr, err)
 	}
 
-	wOut.Close()
-	wErr.Close()
+	_ = wOut.Close()
+	_ = wErr.Close()
 	os.Stdout = oldStdout
 	os.Stderr = oldStderr
 
 	var outBuf, errBuf bytes.Buffer
-	outBuf.ReadFrom(rOut)
-	errBuf.ReadFrom(rErr)
+	_, _ = outBuf.ReadFrom(rOut)
+	_, _ = errBuf.ReadFrom(rErr)
 
 	return outBuf.String(), errBuf.String()
 }
