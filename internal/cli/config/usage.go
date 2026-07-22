@@ -15,6 +15,7 @@ READ
   config get <name>                  Full config with rules, values, and schema
   config rule list <config>          List rules with their IDs
   config schema get <config>         The JSON Schema in clean object form
+  config value get <config>          The defaultValue (fallback when no rule matches)
 
 MODIFY
   config create <name> [--description <text>] [--tag <tag>...]
@@ -25,6 +26,7 @@ MODIFY
   config update <name> <json>        Raw JSON partial update (escape hatch)
   config schema set <config> <json>  Set/replace the JSON Schema
   config schema clear <config>       Remove the JSON Schema
+  config value set <config> <json>   Set the defaultValue (validated against schema)
 
 RULE MANAGEMENT
   config rule add <config>

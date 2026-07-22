@@ -68,6 +68,7 @@ agent-statsig gate rule remove <name> --rule <id>
 agent-statsig config rule add <name> --name "Rule" --criteria email --value user@co.com --return-value '{"key":"val"}'
 agent-statsig config schema get <name>
 agent-statsig config schema set <name> '{"type":"object","required":["key"]}'
+agent-statsig config value set <name> '{"key":"val"}'   # defaultValue (no-rule fallback)
 
 # Experiment lifecycle
 agent-statsig experiment start <name>
