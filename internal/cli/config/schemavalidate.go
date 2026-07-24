@@ -118,7 +118,7 @@ func describeJSON(v any) string {
 // 2020-12 — the only draft Statsig evaluates.
 func isDraft202012(uri string) bool {
 	uri = strings.TrimSuffix(strings.TrimSpace(uri), "#")
-	return uri == "https://json-schema.org/draft/2020-12/schema" ||
+	return uri == draft202012URI ||
 		uri == "http://json-schema.org/draft/2020-12/schema"
 }
 

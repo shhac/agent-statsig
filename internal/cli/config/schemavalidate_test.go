@@ -10,6 +10,28 @@ import (
 	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
 
+func TestIsDraft202012(t *testing.T) {
+	cases := []struct {
+		uri  string
+		want bool
+	}{
+		{"https://json-schema.org/draft/2020-12/schema", true},
+		{"https://json-schema.org/draft/2020-12/schema#", true},
+		{"http://json-schema.org/draft/2020-12/schema", true},
+		{"http://json-schema.org/draft/2020-12/schema#", true},
+		{"  https://json-schema.org/draft/2020-12/schema  ", true},
+		{"http://json-schema.org/draft-07/schema#", false},
+		{"https://json-schema.org/draft/2019-09/schema", false},
+		{"https://example.com/my-meta-schema", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		if got := isDraft202012(c.uri); got != c.want {
+			t.Errorf("isDraft202012(%q) = %v, want %v", c.uri, got, c.want)
+		}
+	}
+}
+
 func TestNormalizeSchema(t *testing.T) {
 	cases := []struct {
 		name   string
