@@ -3,12 +3,22 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
 	"github.com/shhac/agent-statsig/internal/cli/clitest"
 	"github.com/shhac/agent-statsig/internal/mockstatsig"
 )
+
+func TestDescribeJSON(t *testing.T) {
+	if got := describeJSON("https://x"); got != `"https://x"` {
+		t.Errorf("string value should be quoted, got %s", got)
+	}
+	if got := describeJSON(123.0); !strings.Contains(got, "float64") {
+		t.Errorf("non-string value should name its type, got %s", got)
+	}
+}
 
 func TestIsDraft202012(t *testing.T) {
 	cases := []struct {

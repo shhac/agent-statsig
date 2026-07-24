@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/api"
@@ -173,6 +174,37 @@ func TestSchemaSetAddsMissingSchemaURI(t *testing.T) {
 	}
 	if got := sentSchemaURI(t, srv); got != draft202012URI {
 		t.Errorf("$schema sent = %q, want %q", got, draft202012URI)
+	}
+}
+
+func TestSchemaSetInjectsWhenSchemaNull(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config",
+		`{"$schema":null,"type":"object","required":["theme"],"properties":{"theme":{"type":"string"}}}`)
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	if got := sentSchemaURI(t, srv); got != draft202012URI {
+		t.Errorf("$schema sent = %q, want %q", got, draft202012URI)
+	}
+}
+
+func TestSchemaSetRejectsNonStringSchemaURI(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config",
+		`{"$schema":123,"type":"object"}`)
+
+	var parsed map[string]any
+	json.Unmarshal([]byte(stderr), &parsed)
+	if parsed["fixable_by"] != "agent" {
+		t.Errorf("fixable_by = %v (stderr: %s)", parsed["fixable_by"], stderr)
+	}
+	if !strings.Contains(stderr, "float64") {
+		t.Errorf("error should name the offending value's type: %s", stderr)
+	}
+	if len(srv.Patches()) != 0 {
+		t.Error("should not PATCH a non-string $schema")
 	}
 }
 
