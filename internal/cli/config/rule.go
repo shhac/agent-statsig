@@ -125,7 +125,7 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 	cmd.Flags().StringVar(&field, "field", "", "Custom field name")
 	cmd.Flags().StringVar(&returnValue, "return-value", "", "JSON return value for this rule")
 	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of --return-value")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+	addDryRunFlag(cmd, &dryRun)
 	parent.AddCommand(cmd)
 }
 
@@ -271,6 +271,6 @@ func registerRuleMove(parent *cobra.Command, globals func() *shared.GlobalFlags)
 	cmd.Flags().BoolVar(&byID, "by-id", false, "Treat --rule strictly as a rule ID (skip name resolution)")
 	cmd.Flags().StringVar(&position, "position", "", "Target position: 1-based number, 'top', or 'bottom'")
 	cmd.MarkFlagRequired("position")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+	addDryRunFlag(cmd, &dryRun)
 	parent.AddCommand(cmd)
 }

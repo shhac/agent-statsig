@@ -95,7 +95,7 @@ func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "Set the schema even if existing values do not conform")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+	addDryRunFlag(cmd, &dryRun)
 	parent.AddCommand(cmd)
 }
 
@@ -113,6 +113,6 @@ func registerSchemaClear(parent *cobra.Command, globals func() *shared.GlobalFla
 			})
 		},
 	}
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+	addDryRunFlag(cmd, &dryRun)
 	parent.AddCommand(cmd)
 }

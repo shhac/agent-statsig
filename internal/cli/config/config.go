@@ -143,6 +143,12 @@ func registerArchive(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 		})
 }
 
+// addDryRunFlag registers the --dry-run flag shared by every config write
+// command, keeping its help text in one place.
+func addDryRunFlag(cmd *cobra.Command, dst *bool) {
+	cmd.Flags().BoolVar(dst, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+}
+
 // applyConfigUpdate routes a config-level PATCH through the API's dryRun mode
 // when requested and writes the result, marking dry runs so agents know
 // nothing was persisted.
@@ -190,6 +196,6 @@ func registerUpdate(parent *cobra.Command, globals func() *shared.GlobalFlags) {
 	}
 	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag to apply (repeatable, replaces existing tags)")
 	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation of defaultValue/rules")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+	addDryRunFlag(cmd, &dryRun)
 	parent.AddCommand(cmd)
 }

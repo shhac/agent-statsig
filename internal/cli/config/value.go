@@ -71,6 +71,6 @@ func registerValueSet(parent *cobra.Command, globals func() *shared.GlobalFlags)
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "Skip client-side schema validation")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate server-side without persisting (API dryRun)")
+	addDryRunFlag(cmd, &dryRun)
 	parent.AddCommand(cmd)
 }
