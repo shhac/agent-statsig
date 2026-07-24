@@ -64,17 +64,11 @@ func registerValueSet(parent *cobra.Command, globals func() *shared.GlobalFlags)
 						WithHint("Dynamic configs return JSON objects; wrap scalars in a field, e.g. '{\"value\":42}'")
 				}
 
-				if !force {
-					cfg, err := client.GetConfig(ctx, args[0])
-					if err != nil {
-						return err
-					}
-					if err := ValidateAgainstSchema(cfg.Schema, value); err != nil {
-						return err
-					}
+				update := map[string]any{"defaultValue": value}
+				if err := validateUpdatePayload(ctx, client, args[0], update, force); err != nil {
+					return err
 				}
-
-				return applyConfigUpdate(ctx, client, g, args[0], map[string]any{"defaultValue": value}, dryRun)
+				return applyConfigUpdate(ctx, client, g, args[0], update, dryRun)
 			})
 		},
 	}
