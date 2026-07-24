@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/shhac/agent-statsig/internal/api"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
+	"github.com/shhac/agent-statsig/internal/output"
 )
 
 // This file is the config package's schema-validation library: everything
@@ -28,6 +30,7 @@ func ValidateAgainstSchema(schema json.RawMessage, value any) error {
 
 	compiled, err := compileSchema(normalized)
 	if err != nil {
+		noticeSchemaUnvalidatable(err)
 		return nil
 	}
 
@@ -61,6 +64,16 @@ func NormalizeSchema(schema json.RawMessage) (json.RawMessage, bool) {
 	return json.RawMessage(inner), true
 }
 
+// draft202012URI is the exact $schema value Statsig requires on a stored
+// schema — verified against the live API, which exact-matches this string and
+// rejects any other. The CLI supplies it so callers never have to.
+//
+// parseSchemaArg still rejects other drafts client-side rather than deferring
+// to that server check: the local compile happens before the request, so a
+// declared draft-07 would compile with draft-07 semantics and could fail the
+// existing-values pre-flight with a misleading error first.
+const draft202012URI = "https://json-schema.org/draft/2020-12/schema"
+
 // parseSchemaArg parses a user-supplied schema argument: valid JSON, object
 // form, draft 2020-12 only, and compilable. Returns the parsed value (for
 // re-encoding into the API's string form) alongside the compiled schema.
@@ -75,10 +88,15 @@ func parseSchemaArg(raw string) (any, *jsonschema.Schema, error) {
 		return nil, nil, agenterrors.New("schema must be a JSON object", agenterrors.FixableByAgent).
 			WithHint("Pass an object-form JSON Schema; the CLI handles the API's string encoding for you")
 	}
-	if declared, ok := schemaMap["$schema"].(string); ok && !isDraft202012(declared) {
-		return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "unsupported $schema %q: Statsig evaluates schemas as JSON Schema draft 2020-12 only", declared).
-			WithHint("Remove $schema, or set it to https://json-schema.org/draft/2020-12/schema. Older drafts are not a safe subset — e.g. draft-07 tuple-form 'items' means something different in 2020-12")
+	if declared := schemaMap["$schema"]; declared != nil {
+		uri, isString := declared.(string)
+		if !isString || !isDraft202012(uri) {
+			return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "unsupported $schema %s: Statsig evaluates schemas as JSON Schema draft 2020-12 only", describeJSON(declared)).
+				WithHint("Remove $schema — the CLI adds the draft 2020-12 URI for you. Older drafts are not a safe subset — e.g. draft-07 tuple-form 'items' means something different in 2020-12")
+		}
 	}
+	schemaMap["$schema"] = draft202012URI
+
 	compiled, err := compileSchemaValue(schemaVal)
 	if err != nil {
 		return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "not a valid JSON Schema (draft 2020-12): %s", err).
@@ -87,12 +105,32 @@ func parseSchemaArg(raw string) (any, *jsonschema.Schema, error) {
 	return schemaVal, compiled, nil
 }
 
+// describeJSON renders a rejected JSON value for an error message, quoting
+// strings so a bare URI is not mistaken for prose.
+func describeJSON(v any) string {
+	if s, ok := v.(string); ok {
+		return fmt.Sprintf("%q", s)
+	}
+	return fmt.Sprintf("%v (%T)", v, v)
+}
+
 // isDraft202012 reports whether a $schema URI declares JSON Schema draft
 // 2020-12 — the only draft Statsig evaluates.
 func isDraft202012(uri string) bool {
 	uri = strings.TrimSuffix(strings.TrimSpace(uri), "#")
 	return uri == "https://json-schema.org/draft/2020-12/schema" ||
 		uri == "http://json-schema.org/draft/2020-12/schema"
+}
+
+// noticeSchemaUnvalidatable warns, non-fatally on stderr, that a config's
+// stored schema could not be compiled locally — an unknown JSON Schema draft
+// or a malformed schema — so client-side validation was skipped for this
+// write. The operation still proceeds; Statsig enforces the schema server-side.
+// This keeps "unreadable schema" from silently masquerading as "no schema".
+func noticeSchemaUnvalidatable(err error) {
+	output.WriteNotice(os.Stderr,
+		fmt.Sprintf("config's stored schema could not be validated locally (%s); skipping client-side validation — Statsig still enforces it server-side", err),
+		"If the schema uses a newer JSON Schema draft, update agent-statsig; otherwise inspect it with 'config schema get <name>'")
 }
 
 func compileSchema(raw json.RawMessage) (*jsonschema.Schema, error) {
@@ -184,6 +222,7 @@ func validateUpdatePayload(ctx context.Context, client *api.Client, id string, u
 			return agenterrors.Newf(agenterrors.FixableByAgent, "not a valid JSON Schema (draft 2020-12): %s", err).
 				WithHint("Fix the schema, or use 'config schema set <name> <json>'")
 		}
+		noticeSchemaUnvalidatable(err)
 		return nil
 	}
 

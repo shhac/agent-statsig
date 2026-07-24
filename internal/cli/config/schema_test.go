@@ -164,6 +164,79 @@ func TestSchemaSetAccepts202012SchemaURI(t *testing.T) {
 	}
 }
 
+func TestSchemaSetAddsMissingSchemaURI(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", themeSchema)
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	if got := sentSchemaURI(t, srv); got != draft202012URI {
+		t.Errorf("$schema sent = %q, want %q", got, draft202012URI)
+	}
+}
+
+func TestSchemaSetCanonicalizesSchemaURI(t *testing.T) {
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
+	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config",
+		`{"$schema":"http://json-schema.org/draft/2020-12/schema#","type":"object"}`)
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	if got := sentSchemaURI(t, srv); got != draft202012URI {
+		t.Errorf("$schema sent = %q, want %q", got, draft202012URI)
+	}
+}
+
+// sentSchemaURI pulls $schema out of the string-form schema in the last PATCH.
+func sentSchemaURI(t *testing.T, srv *mockstatsig.ConfigServer) string {
+	t.Helper()
+	patches := srv.Patches()
+	if len(patches) == 0 {
+		t.Fatal("expected a PATCH")
+	}
+	encoded, ok := patches[len(patches)-1]["schema"].(string)
+	if !ok {
+		t.Fatalf("schema must be sent string-form, got %T", patches[len(patches)-1]["schema"])
+	}
+	var sent map[string]any
+	if err := json.Unmarshal([]byte(encoded), &sent); err != nil {
+		t.Fatalf("schema string is not valid JSON: %v", err)
+	}
+	uri, _ := sent["$schema"].(string)
+	return uri
+}
+
+func TestValueSetOnUnvalidatableStoredSchemaWarnsButProceeds(t *testing.T) {
+	// A stored schema declaring a draft jsonschema/v6 can't compile: the write
+	// must proceed (server arbitrates) but stderr must carry a notice so the
+	// skipped validation is not silent.
+	futureSchema := `{"$schema":"https://json-schema.org/draft/2031-01/schema","type":"object","required":["theme"]}`
+	srv := mockstatsig.NewConfigServer(api.DynamicConfig{
+		Name:   "my_config",
+		Schema: mockstatsig.StringFormSchema(futureSchema),
+	})
+	out, stderr := clitest.Run(t, Register, srv.Handler(), "config", "value", "set", "my_config", `{"unrelated":true}`)
+
+	if out == "" {
+		t.Error("expected the write to proceed and produce output")
+	}
+	if len(srv.Patches()) != 1 {
+		t.Fatalf("expected the write to reach the API, PatchCount = %d", len(srv.Patches()))
+	}
+	var notice map[string]any
+	if err := json.Unmarshal([]byte(stderr), &notice); err != nil {
+		t.Fatalf("stderr is not a JSON notice: %q (%v)", stderr, err)
+	}
+	if notice["notice"] == nil {
+		t.Errorf("expected a notice on stderr, got %q", stderr)
+	}
+	if notice["error"] != nil {
+		t.Errorf("skip path must not emit an error, got %q", stderr)
+	}
+}
+
 func TestSchemaSetRejectsNonObject(t *testing.T) {
 	srv := mockstatsig.NewConfigServer(api.DynamicConfig{Name: "my_config"})
 	_, stderr := clitest.Run(t, Register, srv.Handler(), "config", "schema", "set", "my_config", `"just a string"`)

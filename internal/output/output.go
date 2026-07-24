@@ -29,10 +29,12 @@ const (
 )
 
 // ParseFormat is the shared lenient parser. WriteError renders the structured
-// {error, fixable_by, hint} line via the shared encoder (HTML escaping off).
+// {error, fixable_by, hint} line via the shared encoder (HTML escaping off);
+// WriteNotice is its non-fatal sibling, a {notice, hint} line to stderr.
 var (
 	ParseFormat = out.ParseFormat
 	WriteError  = out.WriteError
+	WriteNotice = out.WriteNotice
 )
 
 // ResolveFormat keeps agent-statsig's one-arg, always-default-JSON behavior:

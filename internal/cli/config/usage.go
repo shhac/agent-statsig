@@ -71,6 +71,9 @@ SETTING A SCHEMA
   and handles the API's string encoding for you:
     config schema set my_config '{"type":"object","properties":{"theme":{"type":"string"}},"required":["theme"]}'
 
+  Omit "$schema": the API requires it, and the CLI adds the draft 2020-12 URI
+  before sending. Supplying any other draft is rejected.
+
   Before setting, existing values are checked against the new schema:
     ✗ defaultValue or a rule returnValue does not conform → blocked, each
       violation listed. Fix the values first, or pass --force to set anyway.
