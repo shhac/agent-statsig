@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -73,9 +72,8 @@ func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags
 						return err
 					}
 					if violations := schemaViolations(compiled, cfg); len(violations) > 0 {
-						return agenterrors.Newf(agenterrors.FixableByAgent,
-							"existing values do not conform to the new schema: %s", strings.Join(violations, "; ")).
-							WithHint("Fix the values first ('config rule update --return-value' / 'config update'), or re-run with --force to set the schema anyway")
+						return conformanceError(violations, "existing values do not conform to the new schema",
+							"Fix the values first ('config rule update --return-value' / 'config update'), or re-run with --force to set the schema anyway")
 					}
 				}
 

@@ -208,18 +208,14 @@ func decodeJSONValue(raw json.RawMessage) any {
 // and any defaultValue / rule returnValues in the payload must conform to the
 // effective schema — the one being set, or else the stored one.
 func validateUpdatePayload(ctx context.Context, client *api.Client, id string, update map[string]any, force bool) error {
-	schemaField, hasSchema := update["schema"]
-	if hasSchema {
-		switch schemaField.(type) {
-		case string, nil:
-		default:
-			return agenterrors.New("schema in a raw update must be a JSON-encoded string", agenterrors.FixableByAgent).
-				WithHint("Prefer 'config schema set <name> <json>' — it handles the API's string encoding and validates existing values")
-		}
+	if err := validateSchemaFieldShape(update); err != nil {
+		return err
 	}
 	if force {
 		return nil
 	}
+
+	schemaField, hasSchema := update["schema"]
 	_, hasDV := update["defaultValue"]
 	_, hasRules := update["rules"]
 	if !hasDV && !hasRules && !hasSchema {
@@ -240,11 +236,36 @@ func validateUpdatePayload(ctx context.Context, client *api.Client, id string, u
 		return nil // unrecognizable payload shapes skip client-side validation; the server arbitrates
 	}
 	if violations := schemaViolations(compiled, partial); len(violations) > 0 {
-		return agenterrors.Newf(agenterrors.FixableByAgent,
-			"update does not conform to the config's schema: %s", strings.Join(violations, "; ")).
-			WithHint("Fix the values, change the schema with 'config schema set', or re-run with --force to skip client-side validation")
+		return conformanceError(violations, "update does not conform to the config's schema",
+			"Fix the values, change the schema with 'config schema set', or re-run with --force to skip client-side validation")
 	}
 	return nil
+}
+
+// validateSchemaFieldShape guards the raw 'schema' field of a config update:
+// the API stores schemas string-form, so an object is rejected before the
+// request. Runs regardless of --force, since it catches a client bug rather
+// than a value-conformance issue.
+func validateSchemaFieldShape(update map[string]any) error {
+	schemaField, hasSchema := update["schema"]
+	if !hasSchema {
+		return nil
+	}
+	switch schemaField.(type) {
+	case string, nil:
+		return nil
+	default:
+		return agenterrors.New("schema in a raw update must be a JSON-encoded string", agenterrors.FixableByAgent).
+			WithHint("Prefer 'config schema set <name> <json>' — it handles the API's string encoding and validates existing values")
+	}
+}
+
+// conformanceError builds the standard "values don't match the schema" error
+// from a non-empty violations list, letting each caller frame it with its own
+// message and hint.
+func conformanceError(violations []string, msg, hint string) error {
+	return agenterrors.Newf(agenterrors.FixableByAgent, "%s: %s", msg, strings.Join(violations, "; ")).
+		WithHint(hint)
 }
 
 // effectiveSchema resolves which schema a raw update should be validated
