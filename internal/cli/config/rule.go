@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/spf13/cobra"
 
@@ -91,8 +90,10 @@ func registerRuleAdd(parent *cobra.Command, globals func() *shared.GlobalFlags) 
 
 				var rv any
 				if returnValue != "" {
-					if err := json.Unmarshal([]byte(returnValue), &rv); err != nil {
-						return agenterrors.Newf(agenterrors.FixableByAgent, "invalid return-value JSON: %s", err)
+					var err error
+					rv, err = shared.ParseJSONValue(returnValue, "return-value")
+					if err != nil {
+						return err
 					}
 					rule.ReturnValue = rv
 				}
@@ -150,9 +151,9 @@ func registerRuleUpdate(parent *cobra.Command, globals func() *shared.GlobalFlag
 					update["passPercentage"] = passPercent
 				}
 				if returnValue != "" {
-					var rv any
-					if err := json.Unmarshal([]byte(returnValue), &rv); err != nil {
-						return agenterrors.Newf(agenterrors.FixableByAgent, "invalid return-value JSON: %s", err)
+					rv, err := shared.ParseJSONValue(returnValue, "return-value")
+					if err != nil {
+						return err
 					}
 					update["returnValue"] = rv
 				}

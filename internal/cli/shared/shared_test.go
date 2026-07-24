@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/config"
@@ -120,6 +121,27 @@ func TestParseJSONArgInvalid(t *testing.T) {
 	_, err := ParseJSONArg("not json")
 	if err == nil {
 		t.Error("expected error for invalid JSON")
+	}
+}
+
+func TestParseJSONValue(t *testing.T) {
+	// Unlike ParseJSONArg, non-object values are valid.
+	v, err := ParseJSONValue(`[1,2,3]`, "return-value")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if arr, ok := v.([]any); !ok || len(arr) != 3 {
+		t.Errorf("value = %v", v)
+	}
+}
+
+func TestParseJSONValueInvalidNamesLabel(t *testing.T) {
+	_, err := ParseJSONValue("not json", "return-value")
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "return-value") {
+		t.Errorf("error should name the argument: %v", err)
 	}
 }
 

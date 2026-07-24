@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/spf13/cobra"
 
@@ -54,10 +53,9 @@ func registerValueSet(parent *cobra.Command, globals func() *shared.GlobalFlags)
 		RunE: func(cmd *cobra.Command, args []string) error {
 			g := globals()
 			return shared.WithClient(g.Project, g.TimeoutMS, g.Debug, func(ctx context.Context, client *api.Client) error {
-				var value any
-				if err := json.Unmarshal([]byte(args[1]), &value); err != nil {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "invalid defaultValue JSON: %s", err).
-						WithHint("Provide a JSON object, e.g. '{\"theme\":\"light\"}'")
+				value, err := shared.ParseJSONValue(args[1], "defaultValue")
+				if err != nil {
+					return err
 				}
 				if _, ok := value.(map[string]any); !ok {
 					return agenterrors.New("defaultValue must be a JSON object", agenterrors.FixableByAgent).

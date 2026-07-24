@@ -11,6 +11,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/shhac/agent-statsig/internal/api"
+	"github.com/shhac/agent-statsig/internal/cli/shared"
 	agenterrors "github.com/shhac/agent-statsig/internal/errors"
 	"github.com/shhac/agent-statsig/internal/output"
 )
@@ -72,10 +73,9 @@ const draft202012URI = "https://json-schema.org/draft/2020-12/schema"
 // form, draft 2020-12 only, and compilable. Returns the parsed value (for
 // re-encoding into the API's string form) alongside the compiled schema.
 func parseSchemaArg(raw string) (any, *jsonschema.Schema, error) {
-	var schemaVal any
-	if err := json.Unmarshal([]byte(raw), &schemaVal); err != nil {
-		return nil, nil, agenterrors.Newf(agenterrors.FixableByAgent, "invalid schema JSON: %s", err).
-			WithHint("Provide the schema as a JSON object, e.g. '{\"type\":\"object\",\"required\":[\"theme\"]}'")
+	schemaVal, err := shared.ParseJSONValue(raw, "schema")
+	if err != nil {
+		return nil, nil, err
 	}
 	schemaMap, ok := schemaVal.(map[string]any)
 	if !ok {

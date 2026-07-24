@@ -80,3 +80,16 @@ func ParseJSONArg(raw string) (map[string]any, error) {
 	}
 	return result, nil
 }
+
+// ParseJSONValue parses a JSON string argument into an arbitrary value,
+// returning a classified error that names the argument on failure. label is the
+// argument's name in the message (e.g. "return-value", "defaultValue",
+// "schema"). Use ParseJSONArg instead when the value must be a JSON object.
+func ParseJSONValue(raw, label string) (any, error) {
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "invalid %s JSON: %s", label, err).
+			WithHint("Provide valid JSON")
+	}
+	return v, nil
+}
