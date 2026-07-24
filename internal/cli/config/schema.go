@@ -36,18 +36,27 @@ func registerSchemaGet(parent *cobra.Command, globals func() *shared.GlobalFlags
 				if err != nil {
 					return err
 				}
-				var schemaVal any
-				if normalized, ok := NormalizeSchema(cfg.Schema); ok {
-					if err := json.Unmarshal(normalized, &schemaVal); err != nil {
-						schemaVal = string(normalized)
-					}
-				}
-				shared.WriteResource(map[string]any{"name": cfg.Name, "schema": schemaVal}, g.Format)
+				shared.WriteResource(map[string]any{"name": cfg.Name, "schema": schemaObjectForm(cfg.Schema)}, g.Format)
 				return nil
 			})
 		},
 	}
 	parent.AddCommand(cmd)
+}
+
+// schemaObjectForm decodes a config's stored schema into its object form for
+// display: the decoded value, or the raw string if it will not decode, or nil
+// when no schema is set.
+func schemaObjectForm(schema json.RawMessage) any {
+	normalized, ok := NormalizeSchema(schema)
+	if !ok {
+		return nil
+	}
+	var v any
+	if err := json.Unmarshal(normalized, &v); err != nil {
+		return string(normalized)
+	}
+	return v
 }
 
 func registerSchemaSet(parent *cobra.Command, globals func() *shared.GlobalFlags) {
