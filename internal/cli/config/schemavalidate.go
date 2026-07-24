@@ -23,15 +23,9 @@ import (
 // spec compliance. Accepts both the API's string-form schema and object form
 // (see NormalizeSchema); a missing or malformed schema skips validation.
 func ValidateAgainstSchema(schema json.RawMessage, value any) error {
-	normalized, ok := NormalizeSchema(schema)
-	if !ok {
-		return nil
-	}
-
-	compiled, err := compileSchema(normalized)
-	if err != nil {
-		noticeSchemaUnvalidatable(err)
-		return nil
+	compiled, err := compileStoredSchema(schema, false)
+	if err != nil || compiled == nil {
+		return err
 	}
 
 	if err := compiled.Validate(value); err != nil {
@@ -133,6 +127,30 @@ func noticeSchemaUnvalidatable(err error) {
 		"If the schema uses a newer JSON Schema draft, update agent-statsig; otherwise inspect it with 'config schema get <name>'")
 }
 
+// compileStoredSchema resolves a raw config schema into a compiled validator
+// for client-side checks, encoding the single policy both validation entry
+// points share. It returns (nil, nil) — "nothing to validate against" — when
+// the schema is absent, or when it cannot be compiled locally and userSupplied
+// is false (an unreadable *stored* schema, e.g. a newer draft): a non-fatal
+// notice is emitted and the server arbitrates. A compile failure on a
+// user-supplied schema is a hard error instead.
+func compileStoredSchema(schema json.RawMessage, userSupplied bool) (*jsonschema.Schema, error) {
+	normalized, ok := NormalizeSchema(schema)
+	if !ok {
+		return nil, nil
+	}
+	compiled, err := compileSchema(normalized)
+	if err != nil {
+		if userSupplied {
+			return nil, agenterrors.Newf(agenterrors.FixableByAgent, "not a valid JSON Schema (draft 2020-12): %s", err).
+				WithHint("Fix the schema, or use 'config schema set <name> <json>'")
+		}
+		noticeSchemaUnvalidatable(err)
+		return nil, nil
+	}
+	return compiled, nil
+}
+
 func compileSchema(raw json.RawMessage) (*jsonschema.Schema, error) {
 	var schemaVal any
 	if err := json.Unmarshal(raw, &schemaVal); err != nil {
@@ -212,18 +230,9 @@ func validateUpdatePayload(ctx context.Context, client *api.Client, id string, u
 	if err != nil || schemaRaw == nil {
 		return err
 	}
-	normalized, ok := NormalizeSchema(schemaRaw)
-	if !ok {
-		return nil
-	}
-	compiled, err := compileSchema(normalized)
-	if err != nil {
-		if hasSchema {
-			return agenterrors.Newf(agenterrors.FixableByAgent, "not a valid JSON Schema (draft 2020-12): %s", err).
-				WithHint("Fix the schema, or use 'config schema set <name> <json>'")
-		}
-		noticeSchemaUnvalidatable(err)
-		return nil
+	compiled, err := compileStoredSchema(schemaRaw, hasSchema)
+	if err != nil || compiled == nil {
+		return err
 	}
 
 	partial, ok := decodePartialConfig(update)
