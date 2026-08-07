@@ -1,12 +1,11 @@
 package credential
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/shhac/agent-statsig/internal/config"
+	"github.com/shhac/lib-agent-cli/creds"
 )
 
 const keychainSentinel = "__KEYCHAIN__"
@@ -29,42 +28,42 @@ func credentialsPath() string {
 	return filepath.Join(config.ConfigDir(), "credentials.json")
 }
 
+// store is the credential index's file: 0600 writes into a 0700 parent, atomic
+// replacement, and Update for a locked read-modify-write. This used to be
+// hand-rolled with os.ReadFile/os.WriteFile, which carried a lost-update race —
+// two concurrent writers could each build their write from a stale snapshot,
+// and the loser's entry vanished while its secret stayed in the keychain,
+// unreferenced and un-removable (auth list can't show it, auth remove can't
+// look it up).
+func store() creds.Store {
+	return creds.Store{Path: credentialsPath()}
+}
+
 func readIndex() (map[string]Credential, error) {
-	data, err := os.ReadFile(credentialsPath())
-	if err != nil {
-		if os.IsNotExist(err) {
-			return make(map[string]Credential), nil
-		}
-		return nil, err
-	}
-	var index map[string]Credential
-	if err := json.Unmarshal(data, &index); err != nil {
+	index := map[string]Credential{}
+	if err := store().Load(&index); err != nil {
 		return nil, err
 	}
 	if index == nil {
-		index = make(map[string]Credential)
+		index = map[string]Credential{}
 	}
 	return index, nil
 }
 
-func writeIndex(index map[string]Credential) error {
-	dir := config.ConfigDir()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(index, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(credentialsPath(), append(data, '\n'), 0o600)
+// updateIndex applies mutate to the index under an exclusive lock, so two
+// concurrent `project add`/`project remove` invocations serialize instead of
+// clobbering each other.
+func updateIndex(mutate func(index map[string]Credential) error) error {
+	index := map[string]Credential{}
+	return store().Update(&index, func() error {
+		if index == nil {
+			index = map[string]Credential{}
+		}
+		return mutate(index)
+	})
 }
 
 func Store(name string, cred Credential) (string, error) {
-	index, err := readIndex()
-	if err != nil {
-		return "", err
-	}
-
 	storage := "file"
 	entry := Credential{
 		ConsoleKey: cred.ConsoleKey,
@@ -78,8 +77,13 @@ func Store(name string, cred Credential) (string, error) {
 		storage = "keychain"
 	}
 
-	index[name] = entry
-	if err := writeIndex(index); err != nil {
+	// The index write is the step that must not race: the keychain already
+	// holds the secret by now, so an entry lost to a concurrent writer leaves
+	// that secret referenced by nothing.
+	if err := updateIndex(func(index map[string]Credential) error {
+		index[name] = entry
+		return nil
+	}); err != nil {
 		return "", err
 	}
 	return storage, nil
@@ -107,21 +111,19 @@ func Get(name string) (*Credential, error) {
 }
 
 func Remove(name string) error {
-	index, err := readIndex()
-	if err != nil {
-		return err
-	}
-	entry, ok := index[name]
-	if !ok {
-		return &NotFoundError{Name: name}
-	}
+	return updateIndex(func(index map[string]Credential) error {
+		entry, ok := index[name]
+		if !ok {
+			return &NotFoundError{Name: name}
+		}
 
-	if entry.KeychainManaged {
-		keychainDelete(name)
-	}
+		if entry.KeychainManaged {
+			keychainDelete(name)
+		}
 
-	delete(index, name)
-	return writeIndex(index)
+		delete(index, name)
+		return nil
+	})
 }
 
 func List() ([]string, error) {

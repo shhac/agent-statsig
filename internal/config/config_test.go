@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -115,6 +117,43 @@ func TestSetDefaultNonexistent(t *testing.T) {
 	}
 }
 
+// Concurrent StoreProject calls must not lose each other's entries.
+//
+// Before updateConfig routed through creds.Store.Update, StoreProject did
+// Read() (from the shared in-memory cache) -> mutate -> Write(). Two
+// concurrent CLI invocations (in-process, sharing the package cache, or
+// across processes sharing config.json) each built their write from a
+// snapshot taken before the other's landed, so all but the last writer's
+// project were silently erased.
+func TestConcurrentStoreProjectDoesNotLoseEntries(t *testing.T) {
+	setupTestDir(t)
+
+	const writers = 20
+	var wg sync.WaitGroup
+	for i := range writers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if err := StoreProject(fmt.Sprintf("project-%02d", i), Project{}); err != nil {
+				t.Errorf("StoreProject: %v", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	ClearCache()
+	cfg := Read()
+	if len(cfg.Projects) != writers {
+		t.Fatalf("%d of %d concurrent StoreProject calls survived — updates were lost", len(cfg.Projects), writers)
+	}
+	for i := range writers {
+		name := fmt.Sprintf("project-%02d", i)
+		if _, ok := cfg.Projects[name]; !ok {
+			t.Errorf("%s was lost from config.json", name)
+		}
+	}
+}
+
 func TestConfigDir(t *testing.T) {
 	SetConfigDir("")
 	defer SetConfigDir("")
@@ -126,6 +165,12 @@ func TestConfigDir(t *testing.T) {
 	}
 }
 
+// config.json now goes through creds.Store (see updateConfig), which writes
+// every file 0600 regardless of content — one audited place to get file
+// permissions right rather than a per-file policy. That's a tightening from
+// the previous 0644 default, not a regression: this directory is shared with
+// credentials.json, which can hold a real API key when the keychain is
+// unavailable.
 func TestConfigFilePerms(t *testing.T) {
 	setupTestDir(t)
 	Write(&Config{Projects: make(map[string]Project)})
@@ -135,7 +180,7 @@ func TestConfigFilePerms(t *testing.T) {
 		t.Fatal(err)
 	}
 	perm := info.Mode().Perm()
-	if perm != 0o644 {
-		t.Errorf("config file perms = %o, want 644", perm)
+	if perm != 0o600 {
+		t.Errorf("config file perms = %o, want 600", perm)
 	}
 }

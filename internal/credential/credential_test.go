@@ -1,9 +1,11 @@
 package credential
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/shhac/agent-statsig/internal/config"
@@ -174,6 +176,45 @@ func TestNotFoundErrorMessage(t *testing.T) {
 	want := `project credential "test" not found`
 	if err.Error() != want {
 		t.Errorf("Error() = %q, want %q", err.Error(), want)
+	}
+}
+
+// Concurrent stores must not lose each other's entries.
+//
+// This is the failure that matters most for THIS index: the keychain write has
+// already succeeded by the time the index is written, so an entry lost to a
+// racing writer leaves a live secret in the OS keychain that nothing
+// references — invisible to `project list` and unreachable by `project
+// remove`, which looks the name up in the index first.
+func TestConcurrentStoresDoNotLoseEntries(t *testing.T) {
+	setupTestDir(t)
+	t.Setenv("AGENT_STATSIG_NO_KEYCHAIN", "1")
+
+	const writers = 20
+	var wg sync.WaitGroup
+	for i := range writers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			name := fmt.Sprintf("project-%02d", i)
+			cred := Credential{ConsoleKey: fmt.Sprintf("console-%02d", i)}
+			if _, err := Store(name, cred); err != nil {
+				t.Errorf("Store: %v", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for i := range writers {
+		name := fmt.Sprintf("project-%02d", i)
+		got, err := Get(name)
+		if err != nil {
+			t.Errorf("%s was lost from the index: %v", name, err)
+			continue
+		}
+		if want := fmt.Sprintf("console-%02d", i); got.ConsoleKey != want {
+			t.Errorf("%s round-tripped as %q, want %q", name, got.ConsoleKey, want)
+		}
 	}
 }
 
